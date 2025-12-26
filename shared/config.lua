@@ -194,3 +194,33 @@ Config.NPCs = {
 Config.Notifications = {
     type = 'ox_lib', -- ox_lib, qb, okok
 }
+
+-- Emergency Scenarios
+Config.Emergencies = {
+    enabled = true,
+    multiplier = 1.0, -- Chance multiplier (2.0 = double chance, 0.5 = half chance)
+    minAltitude = 100, -- Minimum altitude to trigger emergencies (meters)
+    checkInterval = 30000, -- How often to check for emergencies (ms)
+
+    -- Reputation changes
+    successBonus = {
+        engine_fire = 10,
+        gear_failure = 8,
+        fuel_leak = 8,
+        electrical_failure = 5,
+        hydraulic_failure = 7,
+        bird_strike = 3,
+    },
+    failPenalty = {
+        engine_fire = -25,
+        gear_failure = -15,
+        fuel_leak = -20,
+        electrical_failure = -10,
+        hydraulic_failure = -15,
+        bird_strike = -5,
+        crash = -25,
+    },
+}
+
+-- Pilot Logbook NUI
+Config.LogbookKeybind = nil -- Set to key like 'F7' to enable keybind, nil to disable

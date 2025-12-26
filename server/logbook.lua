@@ -326,6 +326,102 @@ lib.callback.register('dps-airlines:server:getLogbookSummary', function(source, 
 end)
 
 -- =====================================
+-- INCIDENT TRACKING
+-- =====================================
+
+lib.callback.register('dps-airlines:server:getPilotIncidents', function(source)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then return {} end
+
+    local citizenid = Player.PlayerData.citizenid
+
+    -- Get incidents from logbook (hard landings, emergencies, crashes)
+    local incidents = MySQL.query.await([[
+        SELECT
+            'hard_landing' as type,
+            'Hard Landing' as title,
+            CONCAT('Hard landing at ', arrival_airport) as description,
+            departure_time as date,
+            1 as resolved
+        FROM airline_pilot_logbook
+        WHERE citizenid = ? AND landing_quality = 'hard'
+
+        UNION ALL
+
+        SELECT
+            'emergency' as type,
+            remarks as title,
+            CONCAT('Emergency during flight to ', arrival_airport) as description,
+            departure_time as date,
+            1 as resolved
+        FROM airline_pilot_logbook
+        WHERE citizenid = ? AND remarks LIKE '%emergency%'
+
+        ORDER BY date DESC
+        LIMIT 20
+    ]], { citizenid, citizenid })
+
+    return incidents or {}
+end)
+
+-- Record an emergency event
+function RecordEmergency(citizenid, emergencyType, handled, flightData)
+    -- Update pilot stats
+    if handled then
+        MySQL.update.await([[
+            UPDATE airline_pilot_stats SET
+                emergencies_handled = COALESCE(emergencies_handled, 0) + 1,
+                reputation = reputation + 5
+            WHERE citizenid = ?
+        ]], { citizenid })
+    else
+        MySQL.update.await([[
+            UPDATE airline_pilot_stats SET
+                incidents = COALESCE(incidents, 0) + 1,
+                reputation = GREATEST(0, reputation - 10)
+            WHERE citizenid = ?
+        ]], { citizenid })
+    end
+
+    -- If there's flight data, update the logbook entry
+    if flightData and flightData.logId then
+        local remark = handled
+            and string.format('EMERGENCY: %s - Handled successfully', emergencyType)
+            or string.format('EMERGENCY: %s - Resulted in incident', emergencyType)
+
+        MySQL.update.await([[
+            UPDATE airline_pilot_logbook SET
+                remarks = CONCAT(COALESCE(remarks, ''), ?)
+            WHERE id = ?
+        ]], { remark, flightData.logId })
+    end
+end
+
+exports('RecordEmergency', RecordEmergency)
+
+-- Record a crash
+function RecordCrash(citizenid, flightData)
+    MySQL.update.await([[
+        UPDATE airline_pilot_stats SET
+            crashes = COALESCE(crashes, 0) + 1,
+            reputation = GREATEST(0, reputation - 25)
+        WHERE citizenid = ?
+    ]], { citizenid })
+
+    -- Log the crash in the logbook if there's an active flight
+    if flightData then
+        MySQL.update.await([[
+            UPDATE airline_pilot_logbook SET
+                status = 'crashed',
+                remarks = CONCAT(COALESCE(remarks, ''), ' | CRASH')
+            WHERE id = ?
+        ]], { flightData.logId or 0 })
+    end
+end
+
+exports('RecordCrash', RecordCrash)
+
+-- =====================================
 -- EXPORTS
 -- =====================================
 

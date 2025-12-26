@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'DPSRP'
 description 'Advanced Airlines Job System'
-version '2.0.0'
+version '2.2.0'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -26,6 +26,8 @@ client_scripts {
     'client/blackbox.lua',
     'client/checkride.lua',
     'client/npc.lua',
+    'client/logbook_ui.lua',
+    'client/emergencies.lua',
 }
 
 server_scripts {
@@ -38,6 +40,15 @@ server_scripts {
     'server/charter_requests.lua',
     'server/boss.lua',
     'server/dispatch.lua',
+    'server/emergencies.lua',
+}
+
+ui_page 'html/index.html'
+
+files {
+    'html/index.html',
+    'html/css/*.css',
+    'html/js/*.js',
 }
 
 lua54 'yes'

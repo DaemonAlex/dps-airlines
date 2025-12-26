@@ -272,10 +272,27 @@ CREATE TABLE IF NOT EXISTS `airline_checkrides` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Incident/Emergency Tracking
+CREATE TABLE IF NOT EXISTS `airline_incidents` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `citizenid` VARCHAR(50) NOT NULL,
+    `incident_type` VARCHAR(50) NOT NULL,  -- engine_fire, gear_failure, crash, etc.
+    `success` BOOLEAN DEFAULT FALSE,        -- True if handled successfully
+    `reputation_change` INT DEFAULT 0,
+    `flight_id` INT NULL,
+    `flight_number` VARCHAR(20) NULL,
+    `location` TEXT NULL,
+    `notes` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_pilot` (`citizenid`),
+    INDEX `idx_type` (`incident_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Add crashes column to pilot stats
 ALTER TABLE `airline_pilot_stats` ADD COLUMN IF NOT EXISTS `crashes` INT DEFAULT 0;
 ALTER TABLE `airline_pilot_stats` ADD COLUMN IF NOT EXISTS `last_flight` TIMESTAMP NULL;
 ALTER TABLE `airline_pilot_stats` ADD COLUMN IF NOT EXISTS `checkride_due` TIMESTAMP NULL;
+ALTER TABLE `airline_pilot_stats` ADD COLUMN IF NOT EXISTS `emergencies_handled` INT DEFAULT 0;
 
 -- Insert default maintenance records for company planes
 INSERT IGNORE INTO `airline_maintenance` (`plane_model`, `flights_since_service`, `owned_by`) VALUES

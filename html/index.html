@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pilot Logbook</title>
+    <link rel="stylesheet" href="css/logbook.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="logbook-container" class="hidden">
+        <div class="logbook">
+            <!-- Header -->
+            <div class="logbook-header">
+                <div class="header-left">
+                    <i class="fas fa-plane"></i>
+                    <h1>PILOT LOGBOOK</h1>
+                </div>
+                <div class="header-right">
+                    <span id="pilot-name">Loading...</span>
+                    <button class="close-btn" onclick="closeLogbook()"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="overview">Overview</button>
+                <button class="tab-btn" data-tab="flights">Flight Log</button>
+                <button class="tab-btn" data-tab="ratings">Type Ratings</button>
+                <button class="tab-btn" data-tab="incidents">Incidents</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card primary">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="total-hours">0.0</span>
+                            <span class="stat-label">Total Hours</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-user-tie"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="pic-hours">0.0</span>
+                            <span class="stat-label">PIC Hours</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-moon"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="night-hours">0.0</span>
+                            <span class="stat-label">Night Hours</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-cloud"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="ifr-hours">0.0</span>
+                            <span class="stat-label">IFR Hours</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card wide">
+                        <h3><i class="fas fa-plane-arrival"></i> Landings</h3>
+                        <div class="landing-stats">
+                            <div class="landing-item">
+                                <span class="landing-value" id="day-landings">0</span>
+                                <span class="landing-label">Day</span>
+                            </div>
+                            <div class="landing-item">
+                                <span class="landing-value" id="night-landings">0</span>
+                                <span class="landing-label">Night</span>
+                            </div>
+                            <div class="landing-item warning">
+                                <span class="landing-value" id="hard-landings">0</span>
+                                <span class="landing-label">Hard</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card wide">
+                        <h3><i class="fas fa-chart-pie"></i> Hours by Type</h3>
+                        <div class="hours-breakdown">
+                            <div class="hours-bar">
+                                <div class="bar-fill passenger" id="bar-passenger"></div>
+                                <div class="bar-fill cargo" id="bar-cargo"></div>
+                                <div class="bar-fill charter" id="bar-charter"></div>
+                                <div class="bar-fill ferry" id="bar-ferry"></div>
+                            </div>
+                            <div class="hours-legend">
+                                <span><i class="dot passenger"></i> Passenger <span id="passenger-hours">0</span>h</span>
+                                <span><i class="dot cargo"></i> Cargo <span id="cargo-hours">0</span>h</span>
+                                <span><i class="dot charter"></i> Charter <span id="charter-hours">0</span>h</span>
+                                <span><i class="dot ferry"></i> Ferry <span id="ferry-hours">0</span>h</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <h3><i class="fas fa-id-card"></i> License</h3>
+                        <div class="license-badge" id="license-type">STUDENT</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><i class="fas fa-star"></i> Reputation</h3>
+                        <div class="reputation-display">
+                            <span class="rep-value" id="reputation">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h3><i class="fas fa-dollar-sign"></i> Total Earnings</h3>
+                        <div class="earnings-display" id="total-earnings">$0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flight Log Tab -->
+            <div id="flights" class="tab-content">
+                <div class="flight-log-header">
+                    <h2>Recent Flights</h2>
+                    <select id="flight-filter">
+                        <option value="all">All Flights</option>
+                        <option value="passenger">Passenger</option>
+                        <option value="cargo">Cargo</option>
+                        <option value="charter">Charter</option>
+                        <option value="ferry">Ferry</option>
+                    </select>
+                </div>
+                <div class="flight-log-table">
+                    <div class="table-header">
+                        <span>Date</span>
+                        <span>Route</span>
+                        <span>Aircraft</span>
+                        <span>Time</span>
+                        <span>Type</span>
+                        <span>Landing</span>
+                        <span>Payment</span>
+                    </div>
+                    <div id="flight-entries" class="table-body">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Type Ratings Tab -->
+            <div id="ratings" class="tab-content">
+                <h2>Aircraft Type Ratings</h2>
+                <div id="ratings-grid" class="ratings-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Incidents Tab -->
+            <div id="incidents" class="tab-content">
+                <div class="incidents-header">
+                    <h2>Safety Record</h2>
+                    <div class="safety-summary">
+                        <span class="safe-badge" id="safety-status">EXCELLENT</span>
+                    </div>
+                </div>
+                <div class="incidents-stats">
+                    <div class="incident-stat">
+                        <i class="fas fa-plane-slash"></i>
+                        <span id="crash-count">0</span>
+                        <label>Crashes</label>
+                    </div>
+                    <div class="incident-stat">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="incident-count">0</span>
+                        <label>Incidents</label>
+                    </div>
+                    <div class="incident-stat">
+                        <i class="fas fa-fire"></i>
+                        <span id="emergency-count">0</span>
+                        <label>Emergencies Handled</label>
+                    </div>
+                </div>
+                <div id="incident-list" class="incident-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/logbook.js"></script>
+</body>
+</html>
