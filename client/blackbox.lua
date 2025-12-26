@@ -143,7 +143,7 @@ RegisterNetEvent('dps-airlines:client:planeCrashed', function(data)
     RecordEvent('CRASH', {
         coords = data.coords,
         phase = data.phase,
-        health = GetEntityHealth(CurrentPlane) if CurrentPlane else 0
+        health = CurrentPlane and GetEntityHealth(CurrentPlane) or 0
     })
 
     -- Stop recording
