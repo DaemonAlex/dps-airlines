@@ -72,5 +72,5 @@ Edit `shared/locations.lua` for:
 - Spawn points
 
 ## License
-
+ Original concept and code by @daemonalex
 Free to use and modify for your server.
