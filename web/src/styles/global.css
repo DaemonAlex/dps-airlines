@@ -1,0 +1,480 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: transparent;
+  color: #e0e0e0;
+  overflow: hidden;
+}
+
+.nui-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.nui-container {
+  width: 80vw;
+  max-width: 1200px;
+  height: 80vh;
+  max-height: 800px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(78, 204, 163, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.nui-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(78, 204, 163, 0.2);
+  gap: 16px;
+}
+
+.nui-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.logo-icon {
+  font-size: 24px;
+  color: #4ecca3;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4ecca3;
+  letter-spacing: 1px;
+}
+
+.nui-nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.nav-btn {
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: #8899aa;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  background: rgba(78, 204, 163, 0.1);
+  color: #ccc;
+}
+
+.nav-btn.active {
+  background: rgba(78, 204, 163, 0.2);
+  color: #4ecca3;
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(233, 69, 96, 0.2);
+  color: #e94560;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  background: rgba(233, 69, 96, 0.4);
+}
+
+/* Content */
+.nui-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.nui-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nui-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.nui-content::-webkit-scrollbar-thumb {
+  background: rgba(78, 204, 163, 0.3);
+  border-radius: 3px;
+}
+
+/* Cards */
+.card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #4ecca3;
+}
+
+/* Stat Grid */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #8899aa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #4ecca3;
+}
+
+.stat-sub {
+  font-size: 12px;
+  color: #667788;
+  margin-top: 2px;
+}
+
+/* Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #8899aa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-table td {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-table tr:hover td {
+  background: rgba(78, 204, 163, 0.05);
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background: rgba(78, 204, 163, 0.2);
+  color: #4ecca3;
+}
+
+.badge-warning {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.badge-danger {
+  background: rgba(233, 69, 96, 0.2);
+  color: #e94560;
+}
+
+.badge-info {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.badge-default {
+  background: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+}
+
+/* Aircraft cards (type ratings) */
+.aircraft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.aircraft-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.aircraft-card.unlocked {
+  border-color: rgba(78, 204, 163, 0.4);
+}
+
+.aircraft-card.locked {
+  opacity: 0.5;
+}
+
+.aircraft-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(78, 204, 163, 0.5);
+}
+
+.aircraft-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.aircraft-class {
+  font-size: 11px;
+  color: #8899aa;
+  text-transform: uppercase;
+}
+
+/* Flight tracker map placeholder */
+.tracker-map {
+  width: 100%;
+  height: 400px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.tracker-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #4ecca3;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(78, 204, 163, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(78, 204, 163, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(78, 204, 163, 0); }
+}
+
+/* Section headers */
+.section-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(78, 204, 163, 0.2);
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #8899aa;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(78, 204, 163, 0.2);
+  border-top-color: #4ecca3;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #667788;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.3;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.page-btn {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #8899aa;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.page-btn:hover {
+  background: rgba(78, 204, 163, 0.1);
+  color: #4ecca3;
+}
+
+.page-btn.active {
+  background: rgba(78, 204, 163, 0.2);
+  color: #4ecca3;
+  border-color: rgba(78, 204, 163, 0.4);
+}
+
+/* Fuel bar */
+.fuel-bar-wrapper {
+  padding: 8px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fuel-bar {
+  height: 24px;
+  background: linear-gradient(90deg, #e94560 0%, #ffc107 40%, #4ecca3 70%);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a2e;
+  transition: width 0.5s;
+  min-width: 60px;
+}
+
+/* Crew list */
+.crew-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.crew-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.crew-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(78, 204, 163, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #4ecca3;
+  flex-shrink: 0;
+}
+
+.crew-info {
+  flex: 1;
+}
+
+.crew-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.crew-role {
+  font-size: 12px;
+  color: #4ecca3;
+}
+
+.crew-stats {
+  font-size: 11px;
+  color: #667788;
+  margin-top: 4px;
+}

@@ -1,222 +1,330 @@
 Locations = {}
 
--- Main Hub (Los Santos International)
-Locations.Hub = {
-    name = 'LSIA',
-    label = 'Los Santos International Airport',
-    coords = vector4(-1037.67, -2963.63, 13.95, 330.0),
-
-    -- Clock in/out and job menu
-    jobMenu = vector4(-1037.67, -2963.63, 13.95, 330.0),
-
-    -- Plane spawn points (multiple to avoid collision)
-    planeSpawns = {
-        vector4(-960.34, -2933.75, 13.95, 148.94),
-        vector4(-998.45, -2881.23, 13.95, 148.94),
-        vector4(-1032.15, -2848.67, 13.95, 148.94),
-    },
-
-    -- Runways for takeoff
-    runways = {
-        { label = 'Runway 03', coords = vector4(-1630.58, -2721.92, 13.94, 329.76) },
-        { label = 'Runway 12L', coords = vector4(-1547.32, -2827.42, 13.98, 239.25) },
-        { label = 'Runway 12R', coords = vector4(-1620.11, -2979.68, 13.94, 236.86) },
-    },
-
-    -- Taxiway gates for boarding/deplaning
-    gates = {
-        vector4(-1155.93, -2922.1, 13.95, 323.56),
-        vector4(-1230.38, -2877.72, 13.95, 326.8),
-        vector4(-1272.81, -2862.23, 13.95, 314.29),
-    },
-
-    -- Fueling location
-    fuel = vector4(-978.8, -2890.05, 13.95, 144.28),
-
-    -- Maintenance hangar
-    maintenance = vector4(-1024.56, -2891.34, 13.95, 150.0),
-
-    -- Passenger terminal (NPC spawn)
-    terminal = vector4(-1034.89, -2732.98, 20.17, 240.0),
-
-    -- Cargo loading area
-    cargo = vector4(-1089.45, -2915.67, 13.95, 330.0),
-
-    -- Flight school location
-    flightSchool = vector4(-1143.45, -2698.12, 13.95, 330.0),
-
-    -- Boss office
-    bossOffice = vector4(-1145.67, -2694.34, 13.95, 60.0),
-}
-
--- Destination Airports
 Locations.Airports = {
-    ['sandy'] = {
-        name = 'sandy',
+    ['LSIA'] = {
+        label = 'Los Santos International Airport',
+        code = 'LSIA',
+        coords = vector3(-1037.0, -2963.0, 13.95),
+        heading = 90.0,
+        runway = {
+            start = vector3(-1497.84, -3032.93, 13.94),
+            finish = vector3(-942.40, -2957.74, 13.94),
+            heading = 30.0,
+        },
+        spawns = {
+            planes = {
+                vector4(-998.87, -2993.88, 13.95, 60.0),
+                vector4(-1037.81, -3010.91, 13.95, 60.0),
+                vector4(-1072.59, -3028.53, 13.95, 60.0),
+                vector4(-1108.79, -3045.58, 13.95, 60.0),
+            },
+            helicopters = {
+                vector4(-1145.67, -2864.16, 13.95, 150.0),
+                vector4(-1172.29, -2846.68, 13.95, 150.0),
+            },
+        },
+        terminals = {
+            duty = vector3(-1040.46, -2745.57, 21.36),
+            charter = vector3(-1020.80, -2727.27, 21.36),
+            cargo = vector3(-1095.23, -3043.39, 13.95),
+            fuel = vector3(-1050.0, -2990.0, 13.95),
+            maintenance = vector3(-1060.0, -3000.0, 13.95),
+        },
+        gates = {
+            { label = 'Gate A1', coords = vector3(-1045.0, -2750.0, 21.36), heading = 270.0 },
+            { label = 'Gate A2', coords = vector3(-1045.0, -2765.0, 21.36), heading = 270.0 },
+            { label = 'Gate A3', coords = vector3(-1045.0, -2780.0, 21.36), heading = 270.0 },
+            { label = 'Gate B1', coords = vector3(-1020.0, -2750.0, 21.36), heading = 90.0 },
+            { label = 'Gate B2', coords = vector3(-1020.0, -2765.0, 21.36), heading = 90.0 },
+        },
+        npc = vector4(-1040.46, -2745.57, 21.36, 240.0),
+    },
+
+    ['SSA'] = {
         label = 'Sandy Shores Airfield',
-        coords = vector4(1482.13, 3154.87, 41.24, 289.67),
-        landing = vector4(1735.72, 3294.28, 41.16, 10.65),
-        fuel = vector4(1683.37, 3269.24, 40.76, 242.55),
-        terminal = vector4(1735.72, 3294.28, 41.16, 10.65),
-        cargo = vector4(1680.0, 3280.0, 40.76, 240.0),
-        distance = 8.5, -- km from hub
-        type = 'regional',
-        availablePlanes = { 'luxor', 'shamal' }, -- Larger planes can't land here
-    },
-    ['grapeseed'] = {
-        name = 'grapeseed',
-        label = 'Grapeseed Airstrip',
-        coords = vector4(2036.67, 4759.05, 41.08, 293.98),
-        landing = vector4(2128.13, 4794.33, 41.14, 206.88),
-        fuel = vector4(2164.9, 4807.79, 41.22, 27.01),
-        terminal = vector4(2128.13, 4794.33, 41.14, 206.88),
-        cargo = vector4(2160.0, 4800.0, 41.22, 30.0),
-        distance = 12.3,
-        type = 'rural',
-        availablePlanes = { 'luxor' }, -- Only small planes
-    },
-    ['zancudo'] = {
-        name = 'zancudo',
-        label = 'Fort Zancudo (Military)',
-        coords = vector4(-2272.15, 3011.23, 32.9, 55.78),
-        landing = vector4(-2122.17, 3134.38, 32.81, 324.87),
-        fuel = vector4(-2104.59, 3214.67, 32.81, 153.68),
-        terminal = vector4(-2122.17, 3134.38, 32.81, 324.87),
-        cargo = vector4(-2100.0, 3200.0, 32.81, 150.0),
-        distance = 10.8,
-        type = 'military',
-        availablePlanes = { 'luxor', 'shamal', 'nimbus', 'miljet' },
-        restricted = true, -- Special clearance needed
-    },
-    ['lsia'] = {
-        name = 'lsia',
-        label = 'Los Santos International',
-        coords = vector4(-1470.58, -2796.59, 13.94, 48.14),
-        landing = vector4(-1344.08, -2690.38, 13.94, 330.83),
-        fuel = vector4(-978.8, -2890.05, 13.95, 144.28),
-        terminal = vector4(-1034.89, -2732.98, 20.17, 240.0),
-        cargo = vector4(-1089.45, -2915.67, 13.95, 330.0),
-        distance = 0,
-        type = 'international',
-        availablePlanes = { 'luxor', 'shamal', 'nimbus', 'miljet' },
-        isHub = true,
+        code = 'SSA',
+        coords = vector3(1692.87, 3281.69, 41.14),
+        heading = 180.0,
+        runway = {
+            start = vector3(1741.22, 3270.60, 41.14),
+            finish = vector3(1396.88, 3271.56, 41.14),
+            heading = 268.0,
+        },
+        spawns = {
+            planes = {
+                vector4(1692.87, 3281.69, 41.14, 92.0),
+                vector4(1707.74, 3256.49, 41.14, 92.0),
+            },
+            helicopters = {
+                vector4(1770.0, 3240.0, 41.14, 180.0),
+            },
+        },
+        terminals = {
+            duty = vector3(1693.30, 3280.82, 41.14),
+            charter = vector3(1700.0, 3283.0, 41.14),
+            cargo = vector3(1672.0, 3285.0, 41.14),
+            fuel = vector3(1680.0, 3275.0, 41.14),
+            maintenance = vector3(1685.0, 3270.0, 41.14),
+        },
+        gates = {
+            { label = 'Pad 1', coords = vector3(1692.87, 3281.69, 41.14), heading = 92.0 },
+        },
+        npc = vector4(1693.30, 3280.82, 41.14, 225.0),
     },
 
-    -- CUSTOM AIRPORTS
-
-    ['roxwood'] = {
-        name = 'roxwood',
-        label = 'Roxwood International Airport',
-        coords = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        landing = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        fuel = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        terminal = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        cargo = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        distance = 15.0, -- km from LSIA hub
-        type = 'international',
-        availablePlanes = { 'luxor', 'shamal', 'nimbus', 'miljet' }, -- Full international, all planes
+    ['FZ'] = {
+        label = 'Fort Zancudo',
+        code = 'FZ',
+        coords = vector3(-2105.18, 3049.73, 32.81),
+        heading = 150.0,
+        runway = {
+            start = vector3(-2265.32, 3098.32, 32.81),
+            finish = vector3(-1836.63, 2947.76, 32.81),
+            heading = 150.0,
+        },
+        spawns = {
+            planes = {
+                vector4(-2105.18, 3049.73, 32.81, 150.0),
+                vector4(-2130.35, 3061.64, 32.81, 150.0),
+            },
+            helicopters = {
+                vector4(-2069.93, 3058.08, 32.81, 200.0),
+            },
+        },
+        terminals = {
+            duty = vector3(-2105.18, 3049.73, 32.81),
+            cargo = vector3(-2120.0, 3055.0, 32.81),
+            fuel = vector3(-2110.0, 3045.0, 32.81),
+            maintenance = vector3(-2115.0, 3040.0, 32.81),
+        },
+        gates = {
+            { label = 'Military Pad 1', coords = vector3(-2105.18, 3049.73, 32.81), heading = 150.0 },
+        },
+        npc = vector4(-2105.18, 3049.73, 32.81, 150.0),
     },
-    ['paleto'] = {
-        name = 'paleto',
-        label = 'Paleto Regional Airport',
-        coords = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        landing = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        fuel = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        terminal = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        cargo = vector4(0.0, 0.0, 0.0, 0.0), -- TODO: Update coords
-        distance = 18.0, -- km from LSIA hub
-        type = 'regional',
-        availablePlanes = { 'luxor', 'shamal', 'nimbus' }, -- Regional, no miljet
+
+    ['MK'] = {
+        label = 'McKenzie Airfield',
+        code = 'MK',
+        coords = vector3(2121.72, 4796.36, 41.19),
+        heading = 225.0,
+        runway = {
+            start = vector3(2135.93, 4813.97, 41.19),
+            finish = vector3(2015.78, 4730.83, 41.19),
+            heading = 225.0,
+        },
+        spawns = {
+            planes = {
+                vector4(2121.72, 4796.36, 41.19, 225.0),
+                vector4(2133.58, 4775.47, 41.19, 225.0),
+            },
+            helicopters = {
+                vector4(2140.0, 4810.0, 41.19, 225.0),
+            },
+        },
+        terminals = {
+            duty = vector3(2121.72, 4796.36, 41.19),
+            cargo = vector3(2115.0, 4790.0, 41.19),
+            fuel = vector3(2125.0, 4800.0, 41.19),
+            maintenance = vector3(2130.0, 4795.0, 41.19),
+        },
+        gates = {
+            { label = 'Strip 1', coords = vector3(2121.72, 4796.36, 41.19), heading = 225.0 },
+        },
+        npc = vector4(2121.72, 4796.36, 41.19, 225.0),
+    },
+
+    ['CP'] = {
+        label = 'Cayo Perico Airstrip',
+        code = 'CP',
+        coords = vector3(4449.07, -4481.98, 4.20),
+        heading = 315.0,
+        runway = {
+            start = vector3(4517.65, -4558.27, 3.88),
+            finish = vector3(4372.20, -4413.17, 2.08),
+            heading = 315.0,
+        },
+        spawns = {
+            planes = {
+                vector4(4449.07, -4481.98, 4.20, 315.0),
+                vector4(4462.30, -4497.52, 4.20, 315.0),
+            },
+            helicopters = {
+                vector4(4440.0, -4445.0, 4.20, 315.0),
+            },
+        },
+        terminals = {
+            duty = vector3(4449.07, -4481.98, 4.20),
+            charter = vector3(4455.0, -4475.0, 4.20),
+            cargo = vector3(4435.0, -4470.0, 4.20),
+            fuel = vector3(4445.0, -4485.0, 4.20),
+            maintenance = vector3(4440.0, -4480.0, 4.20),
+        },
+        gates = {
+            { label = 'Island Pad 1', coords = vector3(4449.07, -4481.98, 4.20), heading = 315.0 },
+        },
+        npc = vector4(4449.07, -4481.98, 4.20, 315.0),
     },
 }
 
--- Flight Routes (auto-generated based on airports, but can add custom)
-Locations.Routes = {
-    -- Standard routes between airports
-    { from = 'lsia', to = 'sandy', flightType = 'passenger', priority = 'normal' },
-    { from = 'lsia', to = 'grapeseed', flightType = 'passenger', priority = 'normal' },
-    { from = 'lsia', to = 'zancudo', flightType = 'cargo', priority = 'high', restricted = true },
-    { from = 'sandy', to = 'grapeseed', flightType = 'passenger', priority = 'low' },
-    { from = 'sandy', to = 'lsia', flightType = 'passenger', priority = 'normal' },
-    { from = 'grapeseed', to = 'sandy', flightType = 'cargo', priority = 'normal' },
-    { from = 'grapeseed', to = 'lsia', flightType = 'passenger', priority = 'normal' },
-
-    -- Roxwood International routes
-    { from = 'lsia', to = 'roxwood', flightType = 'passenger', priority = 'high' },
-    { from = 'roxwood', to = 'lsia', flightType = 'passenger', priority = 'high' },
-    { from = 'roxwood', to = 'paleto', flightType = 'passenger', priority = 'normal' },
-    { from = 'roxwood', to = 'sandy', flightType = 'cargo', priority = 'normal' },
-
-    -- Paleto Regional routes
-    { from = 'lsia', to = 'paleto', flightType = 'passenger', priority = 'normal' },
-    { from = 'paleto', to = 'lsia', flightType = 'passenger', priority = 'normal' },
-    { from = 'paleto', to = 'grapeseed', flightType = 'cargo', priority = 'low' },
-    { from = 'paleto', to = 'roxwood', flightType = 'passenger', priority = 'normal' },
-}
-
--- NPC Spawn Points at Hub
-Locations.NPCs = {
+Locations.Helipads = {
     {
-        id = 'dispatch',
-        label = 'Dispatch Officer',
-        coords = vector4(-1037.67, -2963.63, 13.95, 330.0),
-        model = 's_m_m_pilot_02',
-        scenario = 'WORLD_HUMAN_CLIPBOARD',
-        interaction = 'dispatch', -- Links to menu type
+        label = 'Central Hospital Helipad',
+        code = 'HOS1',
+        coords = vector3(338.17, -583.98, 74.16),
+        heading = 0.0,
+        spawn = vector4(338.17, -583.98, 74.16, 0.0),
+        types = { Constants.HELI_MEDEVAC },
     },
     {
-        id = 'flightschool',
-        label = 'Flight Instructor',
-        coords = vector4(-1143.45, -2698.12, 13.95, 330.0),
-        model = 's_m_m_pilot_01',
-        scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-        interaction = 'school',
+        label = 'Pillbox Hospital Helipad',
+        code = 'HOS2',
+        coords = vector3(352.14, -588.24, 74.16),
+        heading = 0.0,
+        spawn = vector4(352.14, -588.24, 74.16, 0.0),
+        types = { Constants.HELI_MEDEVAC, Constants.HELI_VIP },
     },
     {
-        id = 'mechanic',
-        label = 'Aircraft Mechanic',
-        coords = vector4(-1024.56, -2891.34, 13.95, 150.0),
-        model = 's_m_y_airworker',
-        scenario = 'WORLD_HUMAN_WELDING',
-        interaction = 'maintenance',
+        label = 'LSIA Helipad',
+        code = 'LSIAH',
+        coords = vector3(-1145.67, -2864.16, 13.95),
+        heading = 150.0,
+        spawn = vector4(-1145.67, -2864.16, 13.95, 150.0),
+        types = { Constants.HELI_TOUR, Constants.HELI_VIP, Constants.HELI_SEARCH },
     },
     {
-        id = 'cargo',
-        label = 'Cargo Handler',
-        coords = vector4(-1089.45, -2915.67, 13.95, 330.0),
-        model = 's_m_m_ups_01',
-        scenario = 'WORLD_HUMAN_BUM_STANDING',
-        interaction = 'cargo',
+        label = 'Vespucci Helipad',
+        code = 'VESP',
+        coords = vector3(-724.97, -1444.04, 5.0),
+        heading = 140.0,
+        spawn = vector4(-724.97, -1444.04, 5.0, 140.0),
+        types = { Constants.HELI_TOUR, Constants.HELI_VIP },
     },
     {
-        id = 'charter_desk',
-        label = 'Charter Services',
-        coords = vector4(-1034.89, -2732.98, 20.17, 240.0), -- At terminal
-        model = 's_f_m_shop_high',
-        scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-        interaction = 'charter', -- Public charter requests
-        public = true, -- Any player can interact
+        label = 'Merryweather Helipad',
+        code = 'MERR',
+        coords = vector3(486.36, -1772.41, 29.29),
+        heading = 90.0,
+        spawn = vector4(486.36, -1772.41, 29.29, 90.0),
+        types = { Constants.HELI_VIP, Constants.HELI_SEARCH },
+    },
+    {
+        label = 'Paleto Bay Helipad',
+        code = 'PALT',
+        coords = vector3(-475.24, 6019.0, 31.34),
+        heading = 45.0,
+        spawn = vector4(-475.24, 6019.0, 31.34, 45.0),
+        types = { Constants.HELI_MEDEVAC, Constants.HELI_SEARCH },
     },
 }
 
--- Blip Configuration
-Locations.Blips = {
-    hub = {
-        sprite = 423, -- Plane icon
-        color = 3, -- Blue
-        scale = 0.8,
-        label = 'Los Santos Airlines',
+-- Tour waypoints for helicopter tours
+Locations.TourRoutes = {
+    ['vinewood'] = {
+        label = 'Vinewood Hills Tour',
+        duration = 300,
+        waypoints = {
+            vector3(297.0, 180.0, 104.0),
+            vector3(654.0, 558.0, 130.0),
+            vector3(100.0, 834.0, 235.0),
+            vector3(-596.0, 651.0, 155.0),
+            vector3(-809.0, 413.0, 136.0),
+        },
     },
-    airport = {
-        sprite = 423,
-        color = 2, -- Green
-        scale = 0.6,
-        label = 'Airport',
+    ['coastal'] = {
+        label = 'Coastal Tour',
+        duration = 420,
+        waypoints = {
+            vector3(-1850.0, -1231.0, 13.0),
+            vector3(-2991.0, 41.0, 10.0),
+            vector3(-3415.0, 967.0, 8.0),
+            vector3(-2178.0, 1741.0, 140.0),
+            vector3(-1601.0, 2171.0, 60.0),
+        },
     },
-    flightSchool = {
-        sprite = 90, -- Checkered flag
-        color = 5, -- Yellow
-        scale = 0.7,
-        label = 'Flight School',
+    ['city'] = {
+        label = 'Downtown LS Tour',
+        duration = 360,
+        waypoints = {
+            vector3(-75.0, -818.0, 326.0),
+            vector3(136.0, -1079.0, 29.0),
+            vector3(-271.0, -1908.0, 27.0),
+            vector3(237.0, -2017.0, 18.0),
+            vector3(-62.0, -1454.0, 32.0),
+        },
     },
 }
+
+-- Flight routes (airport to airport)
+Locations.Routes = {}
+
+-- Auto-generate routes between all airports
+for fromCode, fromAirport in pairs(Locations.Airports) do
+    for toCode, toAirport in pairs(Locations.Airports) do
+        if fromCode ~= toCode then
+            local dist = #(fromAirport.coords - toAirport.coords)
+            local routeKey = fromCode .. '_' .. toCode
+            Locations.Routes[routeKey] = {
+                from = fromCode,
+                to = toCode,
+                fromLabel = fromAirport.label,
+                toLabel = toAirport.label,
+                distance = dist,
+                estimatedTime = math.ceil(dist / 50), -- rough seconds estimate
+            }
+        end
+    end
+end
+
+-- Helper functions
+function Locations.GetAirport(code)
+    return Locations.Airports[code]
+end
+
+function Locations.GetNearestAirport(coords)
+    local nearest, nearestDist = nil, math.huge
+    for code, airport in pairs(Locations.Airports) do
+        local dist = #(coords - airport.coords)
+        if dist < nearestDist then
+            nearest = code
+            nearestDist = dist
+        end
+    end
+    return nearest, nearestDist
+end
+
+function Locations.GetNearestHelipad(coords)
+    local nearest, nearestDist = nil, math.huge
+    for i, pad in ipairs(Locations.Helipads) do
+        local dist = #(coords - pad.coords)
+        if dist < nearestDist then
+            nearest = pad
+            nearestDist = dist
+        end
+    end
+    return nearest, nearestDist
+end
+
+function Locations.GetRoute(fromCode, toCode)
+    return Locations.Routes[fromCode .. '_' .. toCode]
+end
+
+function Locations.GetAircraftConfig(model)
+    for _, aircraft in ipairs(Config.Aircraft) do
+        if aircraft.model == model then
+            return aircraft
+        end
+    end
+    return nil
+end
+
+function Locations.GetHeliConfig(model)
+    for _, heli in ipairs(Config.HeliModels) do
+        if heli.model == model then
+            return heli
+        end
+    end
+    return nil
+end
+
+return Locations

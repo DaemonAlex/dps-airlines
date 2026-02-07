@@ -1,33 +1,20 @@
--- DPS Airlines v3.0 - Full Database Schema
--- Run this on a fresh install (no existing dps-airlines tables)
+-- DPS Airlines v2 to v3 Migration Script
+-- IMPORTANT: Back up your database before running this migration!
+-- This script assumes the v2 tables exist (airline_pilot_stats, airline_flights, etc.)
 
-CREATE TABLE IF NOT EXISTS `airline_pilot_stats` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `citizenid` VARCHAR(50) NOT NULL,
-    `role` VARCHAR(30) NOT NULL DEFAULT 'ground_crew',
-    `total_flights` INT NOT NULL DEFAULT 0,
-    `successful_flights` INT NOT NULL DEFAULT 0,
-    `failed_flights` INT NOT NULL DEFAULT 0,
-    `total_passengers` INT NOT NULL DEFAULT 0,
-    `total_cargo` INT NOT NULL DEFAULT 0,
-    `total_distance` FLOAT NOT NULL DEFAULT 0,
-    `total_earnings` INT NOT NULL DEFAULT 0,
-    `flight_hours` FLOAT NOT NULL DEFAULT 0,
-    `copilot_hours` FLOAT NOT NULL DEFAULT 0,
-    `attendant_flights` INT NOT NULL DEFAULT 0,
-    `ground_tasks_completed` INT NOT NULL DEFAULT 0,
-    `dispatches_created` INT NOT NULL DEFAULT 0,
-    `service_rating` FLOAT NOT NULL DEFAULT 5.0,
-    `landing_rating` FLOAT NOT NULL DEFAULT 5.0,
-    `incidents` INT NOT NULL DEFAULT 0,
-    `reputation` INT NOT NULL DEFAULT 100,
-    `licenses` TEXT DEFAULT NULL,
-    `type_ratings` TEXT DEFAULT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY `idx_citizenid` (`citizenid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Step 1: Add new columns to airline_pilot_stats
+ALTER TABLE `airline_pilot_stats`
+    ADD COLUMN IF NOT EXISTS `role` VARCHAR(30) NOT NULL DEFAULT 'captain' AFTER `citizenid`,
+    ADD COLUMN IF NOT EXISTS `copilot_hours` FLOAT NOT NULL DEFAULT 0 AFTER `flight_hours`,
+    ADD COLUMN IF NOT EXISTS `attendant_flights` INT NOT NULL DEFAULT 0 AFTER `copilot_hours`,
+    ADD COLUMN IF NOT EXISTS `ground_tasks_completed` INT NOT NULL DEFAULT 0 AFTER `attendant_flights`,
+    ADD COLUMN IF NOT EXISTS `dispatches_created` INT NOT NULL DEFAULT 0 AFTER `ground_tasks_completed`,
+    ADD COLUMN IF NOT EXISTS `service_rating` FLOAT NOT NULL DEFAULT 5.0 AFTER `dispatches_created`,
+    ADD COLUMN IF NOT EXISTS `landing_rating` FLOAT NOT NULL DEFAULT 5.0 AFTER `service_rating`,
+    ADD COLUMN IF NOT EXISTS `reputation` INT NOT NULL DEFAULT 100 AFTER `incidents`,
+    ADD COLUMN IF NOT EXISTS `type_ratings` TEXT DEFAULT NULL AFTER `licenses`;
 
+-- Step 2: Create new tables (safe with IF NOT EXISTS)
 CREATE TABLE IF NOT EXISTS `airline_role_assignments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `citizenid` VARCHAR(50) NOT NULL,
@@ -38,32 +25,6 @@ CREATE TABLE IF NOT EXISTS `airline_role_assignments` (
     KEY `idx_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS `airline_flights` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `flight_number` VARCHAR(20) NOT NULL,
-    `pilot_citizenid` VARCHAR(50) NOT NULL,
-    `copilot_citizenid` VARCHAR(50) DEFAULT NULL,
-    `aircraft_model` VARCHAR(50) NOT NULL,
-    `departure_airport` VARCHAR(10) NOT NULL,
-    `arrival_airport` VARCHAR(10) NOT NULL,
-    `passengers` INT NOT NULL DEFAULT 0,
-    `cargo_weight` INT NOT NULL DEFAULT 0,
-    `flight_type` VARCHAR(20) NOT NULL DEFAULT 'scheduled',
-    `status` VARCHAR(20) NOT NULL DEFAULT 'active',
-    `distance` FLOAT NOT NULL DEFAULT 0,
-    `duration` INT NOT NULL DEFAULT 0,
-    `fuel_used` FLOAT NOT NULL DEFAULT 0,
-    `landing_speed` FLOAT DEFAULT NULL,
-    `landing_quality` VARCHAR(20) DEFAULT NULL,
-    `weather_conditions` VARCHAR(20) DEFAULT NULL,
-    `total_pay` INT NOT NULL DEFAULT 0,
-    `departure_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `arrival_time` TIMESTAMP NULL DEFAULT NULL,
-    KEY `idx_pilot` (`pilot_citizenid`),
-    KEY `idx_status` (`status`),
-    KEY `idx_departure` (`departure_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 CREATE TABLE IF NOT EXISTS `airline_crew_assignments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `flight_id` INT NOT NULL,
@@ -72,8 +33,7 @@ CREATE TABLE IF NOT EXISTS `airline_crew_assignments` (
     `pay_amount` INT NOT NULL DEFAULT 0,
     `boarded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     KEY `idx_flight` (`flight_id`),
-    KEY `idx_citizen` (`citizenid`),
-    CONSTRAINT `fk_crew_flight` FOREIGN KEY (`flight_id`) REFERENCES `airline_flights` (`id`) ON DELETE CASCADE
+    KEY `idx_citizen` (`citizenid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `airline_ground_tasks` (
@@ -99,8 +59,7 @@ CREATE TABLE IF NOT EXISTS `airline_passenger_reviews` (
     `time_quality` FLOAT NOT NULL DEFAULT 3.0,
     `overall_rating` FLOAT NOT NULL DEFAULT 3.0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    KEY `idx_flight` (`flight_id`),
-    CONSTRAINT `fk_review_flight` FOREIGN KEY (`flight_id`) REFERENCES `airline_flights` (`id`) ON DELETE CASCADE
+    KEY `idx_flight` (`flight_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `airline_cargo_contracts` (
@@ -223,3 +182,36 @@ CREATE TABLE IF NOT EXISTS `airline_company_ledger` (
     KEY `idx_type` (`transaction_type`),
     KEY `idx_date` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Step 3: Migrate grade mappings
+-- Old: trainee(0) -> ground_crew(1), pilot(1) -> captain(4), boss(2) -> chief_pilot(5)
+-- Insert role assignments based on old job grades
+
+-- Map existing pilots (grade 1 in old system) to captain role
+INSERT IGNORE INTO `airline_role_assignments` (`citizenid`, `role`, `assigned_by`)
+SELECT `citizenid`, 'captain', 'system_migration'
+FROM `airline_pilot_stats`
+WHERE `role` = 'captain' OR `role` = 'ground_crew';
+
+-- Update pilot_stats role field based on old data
+UPDATE `airline_pilot_stats`
+SET `role` = CASE
+    WHEN `flight_hours` >= 50 THEN 'captain'
+    WHEN `flight_hours` >= 20 THEN 'first_officer'
+    ELSE 'ground_crew'
+END
+WHERE `role` = 'captain' OR `role` = 'ground_crew';
+
+-- Step 4: Add copilot column to airline_flights if missing
+ALTER TABLE `airline_flights`
+    ADD COLUMN IF NOT EXISTS `copilot_citizenid` VARCHAR(50) DEFAULT NULL AFTER `pilot_citizenid`,
+    ADD COLUMN IF NOT EXISTS `fuel_used` FLOAT NOT NULL DEFAULT 0 AFTER `duration`,
+    ADD COLUMN IF NOT EXISTS `landing_speed` FLOAT DEFAULT NULL AFTER `fuel_used`,
+    ADD COLUMN IF NOT EXISTS `landing_quality` VARCHAR(20) DEFAULT NULL AFTER `landing_speed`,
+    ADD COLUMN IF NOT EXISTS `weather_conditions` VARCHAR(20) DEFAULT NULL AFTER `landing_quality`;
+
+-- Step 5: Verify migration
+SELECT 'Migration complete. Summary:' AS status;
+SELECT COUNT(*) AS total_pilots FROM `airline_pilot_stats`;
+SELECT COUNT(*) AS role_assignments FROM `airline_role_assignments`;
+SELECT COUNT(*) AS existing_flights FROM `airline_flights`;

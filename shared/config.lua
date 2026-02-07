@@ -1,226 +1,222 @@
 Config = {}
 
--- General Settings
 Config.Debug = false
-Config.UseTarget = true -- Use ox_target for interactions
-Config.FuelScript = 'qs-fuel' -- qs-fuel, LegacyFuel, cdn-fuel, ps-fuel
+Config.Job = 'airline'
 
--- Job Settings
-Config.Job = 'pilot'
-Config.BossGrade = 2
+-- Society account name for airline funds
+Config.SocietyAccount = 'society_airline'
 
--- Economy Settings
-Config.PaymentAccount = 'bank' -- bank, cash
-Config.UseSocietyFunds = true -- Pay from society account (requires qb-management/qb-banking)
+-- Pay cycle interval (minutes)
+Config.PayCycleMinutes = 30
 
--- Flight Reputation Settings
-Config.RepGainPerFlight = 1
-Config.RepRequirements = {
-    ['shamal'] = 30,      -- Unlock at 30 rep
-    ['nimbus'] = 60,      -- Unlock at 60 rep
-    ['miljet'] = 100,     -- Unlock at 100 rep
-}
-
--- Plane Configuration
-Config.Planes = {
-    ['luxor'] = {
-        label = 'Luxor (Small)',
-        model = 'luxor',
-        maxPassengers = 4,
-        maxCargo = 500, -- kg
-        fuelConsumption = 1.2, -- multiplier
-        basePayment = 100,
-        repRequired = 0,
-        category = 'small',
+-- Roles configuration
+Config.Roles = {
+    [Constants.ROLE_GROUND_CREW] = {
+        label = 'Ground Crew',
+        grade = Constants.GRADE_GROUND_CREW,
+        hourlyPay = 50,
+        taskBonus = 25,
+        canFly = false,
+        canDispatch = false,
+        canManage = false,
     },
-    ['shamal'] = {
-        label = 'Shamal (Medium)',
-        model = 'shamal',
-        maxPassengers = 8,
-        maxCargo = 1000,
-        fuelConsumption = 1.5,
-        basePayment = 200,
-        repRequired = 30,
-        category = 'medium',
+    [Constants.ROLE_FLIGHT_ATTENDANT] = {
+        label = 'Flight Attendant',
+        grade = Constants.GRADE_FLIGHT_ATTEND,
+        flatRate = 150,
+        tipPercent = 0.15,
+        canFly = false,
+        canDispatch = false,
+        canManage = false,
     },
-    ['nimbus'] = {
-        label = 'Nimbus (Large)',
-        model = 'nimbus',
-        maxPassengers = 12,
-        maxCargo = 2000,
-        fuelConsumption = 1.8,
-        basePayment = 300,
-        repRequired = 60,
-        category = 'large',
+    [Constants.ROLE_DISPATCHER] = {
+        label = 'Dispatcher',
+        grade = Constants.GRADE_DISPATCHER,
+        salaryPerCycle = 200,
+        commissionPercent = 0.05,
+        canFly = false,
+        canDispatch = true,
+        canManage = false,
     },
-    ['miljet'] = {
-        label = 'Miljet (Executive)',
-        model = 'miljet',
-        maxPassengers = 16,
-        maxCargo = 3000,
-        fuelConsumption = 2.0,
-        basePayment = 400,
-        repRequired = 100,
-        category = 'executive',
+    [Constants.ROLE_FIRST_OFFICER] = {
+        label = 'First Officer',
+        grade = Constants.GRADE_FIRST_OFFICER,
+        payMultiplier = 0.70,
+        canFly = true,
+        canDispatch = false,
+        canManage = false,
     },
-}
-
--- Passenger System
-Config.Passengers = {
-    enabled = true,
-    payPerPassenger = 15, -- Extra pay per passenger delivered
-    boardingTime = 3000, -- ms per passenger to board
-    models = {
-        'a_m_m_business_01',
-        'a_f_y_business_01',
-        'a_m_y_business_02',
-        'a_f_y_business_02',
-        'a_m_m_tourist_01',
-        'a_f_m_tourist_01',
+    [Constants.ROLE_CAPTAIN] = {
+        label = 'Captain',
+        grade = Constants.GRADE_CAPTAIN,
+        payMultiplier = 1.0,
+        canFly = true,
+        canDispatch = false,
+        canManage = false,
+    },
+    [Constants.ROLE_CHIEF_PILOT] = {
+        label = 'Chief Pilot',
+        grade = Constants.GRADE_CHIEF_PILOT,
+        payMultiplier = 1.0,
+        canFly = true,
+        canDispatch = true,
+        canManage = true,
     },
 }
 
--- Cargo System
-Config.Cargo = {
-    enabled = true,
-    payPerKg = 0.5, -- Payment per kg delivered
-    cargoTypes = {
-        { name = 'mail', label = 'Mail & Packages', weight = { min = 100, max = 300 }, payMultiplier = 1.0 },
-        { name = 'medical', label = 'Medical Supplies', weight = { min = 50, max = 150 }, payMultiplier = 1.5 },
-        { name = 'freight', label = 'General Freight', weight = { min = 200, max = 500 }, payMultiplier = 0.8 },
-        { name = 'valuables', label = 'Valuables', weight = { min = 20, max = 50 }, payMultiplier = 2.5 },
-    },
+-- Flight pay structure
+Config.FlightPay = {
+    baseRate = 500,
+    perPassenger = 5,
+    perCargoTon = 15,
+    perKilometer = 2,
+    priorityMultiplier = 1.5,
+    nightMultiplier = 1.15,
+    emergencyBonus = 250,
 }
 
--- Charter System
+-- Charter pricing
 Config.Charter = {
-    enabled = true,
-    baseFee = 500, -- Base fee for charter
-    perKmFee = 5, -- Additional fee per km
-    maxWaitTime = 300, -- Seconds to wait for pickup
-    cooldown = 600, -- Cooldown between charter requests (seconds)
+    basePrice = 1000,
+    perKilometer = 8,
+    perPassenger = 50,
+    vipMultiplier = 2.0,
+    luggageFee = 25,
+    minPrice = 500,
+    maxPrice = 50000,
 }
 
--- Weather System
-Config.Weather = {
-    enabled = true,
-    checkInterval = 60000, -- Check weather every 60 seconds
-    delays = {
-        ['RAIN'] = { chance = 30, delayMinutes = 15, payBonus = 1.2 },
-        ['THUNDER'] = { chance = 60, delayMinutes = 30, payBonus = 1.5 },
-        ['SNOW'] = { chance = 40, delayMinutes = 20, payBonus = 1.3 },
-        ['FOGGY'] = { chance = 20, delayMinutes = 10, payBonus = 1.1 },
-    },
-    groundedWeather = { 'THUNDER' }, -- Weather that grounds all flights
-}
-
--- Maintenance System
-Config.Maintenance = {
-    enabled = true,
-    flightsBeforeService = 10, -- Flights before maintenance required
-    serviceCost = {
-        ['small'] = 500,
-        ['medium'] = 1000,
-        ['large'] = 2000,
-        ['executive'] = 3500,
-    },
-    breakdownChance = 5, -- % chance of issue per flight when overdue
-}
-
--- Flight School
+-- Flight school
 Config.FlightSchool = {
+    enrollmentFee = 5000,
+    lessonFee = 1500,
+    checkrideFee = 3000,
+    requiredLessons = 5,
+    requiredFlightHours = 10,
+}
+
+-- Cargo contracts
+Config.CargoContracts = {
+    minDeliveries = 3,
+    maxDeliveries = 10,
+    deadlineHours = 48,
+    completionBonusPercent = 0.25,
+    lateDeliveryPenalty = 0.50,
+}
+
+-- Helicopter operations
+Config.Helicopters = {
     enabled = true,
-    licenseCost = 2500,
-    requiredLessons = 3,
-    lessons = {
-        {
-            name = 'takeoff_landing',
-            label = 'Takeoff & Landing',
-            description = 'Learn basic takeoff and landing procedures',
-            reward = 100,
-        },
-        {
-            name = 'navigation',
-            label = 'Navigation',
-            description = 'Learn to navigate using waypoints',
-            reward = 150,
-        },
-        {
-            name = 'emergency',
-            label = 'Emergency Procedures',
-            description = 'Handle engine failures and emergencies',
-            reward = 200,
-        },
+    medevac = {
+        timeLimit = 300, -- seconds
+        basePay = 750,
+        bonusPerSecondSaved = 5,
+    },
+    tour = {
+        basePay = 400,
+        waypointBonus = 50,
+        passengerTipChance = 0.3,
+        tipAmount = { min = 25, max = 100 },
+    },
+    vip = {
+        basePay = 1200,
+        landingBonusSmooth = 500,
+        latePenaltyPerMinute = 50,
+    },
+    searchRescue = {
+        basePay = 600,
+        timeLimit = 600,
+        rescueBonus = 300,
     },
 }
 
--- Dispatch System
-Config.Dispatch = {
-    enabled = true,
-    autoAssign = false, -- Auto-assign flights to available pilots
-    maxActiveFlights = 3, -- Max concurrent flights per pilot
-    priorityMultiplier = 1.5, -- Pay multiplier for priority flights
-    expiryTime = 300, -- Seconds before unaccepted flight expires
+-- Helicopter models allowed
+Config.HeliModels = {
+    { model = 'polmav',    label = 'Police Maverick',  seats = 4, fuelRate = 1.2 },
+    { model = 'maverick',  label = 'Maverick',         seats = 4, fuelRate = 1.0 },
+    { model = 'frogger',   label = 'Frogger',          seats = 4, fuelRate = 0.9 },
+    { model = 'swift',     label = 'Swift',            seats = 4, fuelRate = 1.1 },
+    { model = 'swift2',    label = 'Swift Deluxe',     seats = 4, fuelRate = 1.1 },
+    { model = 'supervolito', label = 'SuperVolito',    seats = 4, fuelRate = 1.3 },
 }
 
--- ATC / Flight Plans
-Config.ATC = {
-    enabled = true,
-    requireClearance = true, -- Must request clearance before takeoff
-    clearanceDelay = { min = 5, max = 15 }, -- Seconds to wait for clearance
-    callsigns = {
-        prefix = 'DPS',
-        format = '%s%d', -- DPS123
-    },
+-- Aircraft configuration
+Config.Aircraft = {
+    { model = 'luxor',     label = 'Luxor',         passengers = 10, cargo = 500,  fuelRate = 1.0, class = 'small' },
+    { model = 'luxor2',    label = 'Luxor Deluxe',  passengers = 10, cargo = 500,  fuelRate = 1.1, class = 'small' },
+    { model = 'shamal',    label = 'Shamal',         passengers = 8,  cargo = 400,  fuelRate = 0.9, class = 'small' },
+    { model = 'miljet',    label = 'Miljet',         passengers = 16, cargo = 800,  fuelRate = 1.2, class = 'medium' },
+    { model = 'nimbus',    label = 'Nimbus',         passengers = 12, cargo = 600,  fuelRate = 1.0, class = 'medium' },
+    { model = 'vestra',    label = 'Vestra',         passengers = 2,  cargo = 200,  fuelRate = 0.7, class = 'small' },
+    { model = 'velum',     label = 'Velum',          passengers = 4,  cargo = 300,  fuelRate = 0.5, class = 'prop' },
+    { model = 'velum2',    label = 'Velum 5-Seater', passengers = 5,  cargo = 350,  fuelRate = 0.6, class = 'prop' },
+    { model = 'dodo',      label = 'Dodo',           passengers = 2,  cargo = 200,  fuelRate = 0.6, class = 'prop' },
+    { model = 'cuban800',  label = 'Cuban 800',      passengers = 2,  cargo = 250,  fuelRate = 0.5, class = 'prop' },
+    { model = 'mammatus',  label = 'Mammatus',       passengers = 2,  cargo = 150,  fuelRate = 0.4, class = 'prop' },
+    { model = 'duster',    label = 'Duster',         passengers = 1,  cargo = 100,  fuelRate = 0.3, class = 'prop' },
+    { model = 'stunt',     label = 'Mallard',        passengers = 2,  cargo = 100,  fuelRate = 0.4, class = 'prop' },
+    { model = 'titan',     label = 'Titan',          passengers = 50, cargo = 5000, fuelRate = 2.0, class = 'large' },
+    { model = 'cargoplane', label = 'Cargo Plane',   passengers = 0,  cargo = 10000, fuelRate = 2.5, class = 'cargo' },
+    { model = 'jet',       label = 'Commercial Jet', passengers = 150, cargo = 3000, fuelRate = 2.0, class = 'large' },
+    { model = 'alkonost',  label = 'Alkonost',       passengers = 0,  cargo = 8000, fuelRate = 3.0, class = 'cargo' },
 }
 
--- NPC Interaction
+-- Fuel configuration
+Config.Fuel = {
+    enabled = true,
+    refuelRate = 2.0,       -- fuel units per second when refueling
+    refuelCostPerUnit = 5,  -- $ per fuel unit
+    weightFactor = 0.001,   -- additional burn per kg of cargo
+}
+
+-- Maintenance
+Config.Maintenance = {
+    degradePerFlight = 5,       -- condition lost per flight
+    repairCostPerPoint = 100,   -- $ per condition point
+    inspectionInterval = 10,    -- flights between required inspections
+    groundedThreshold = 20,     -- condition below this = grounded
+}
+
+-- Passenger reviews
+Config.Reviews = {
+    enabled = true,
+    landingWeight = 0.4,
+    serviceWeight = 0.3,
+    timeWeight = 0.3,
+}
+
+-- NPC configuration
 Config.NPCs = {
-    useTarget = true,
-    blips = true,
-    peds = {
-        {
-            model = 's_m_m_pilot_02',
-            scenario = 'WORLD_HUMAN_CLIPBOARD',
-        },
-        {
-            model = 's_f_y_airhostess_01',
-            scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-        },
-    },
-}
-
--- Notifications
-Config.Notifications = {
-    type = 'ox_lib', -- ox_lib, qb, okok
-}
-
--- Emergency Scenarios
-Config.Emergencies = {
     enabled = true,
-    multiplier = 1.0, -- Chance multiplier (2.0 = double chance, 0.5 = half chance)
-    minAltitude = 100, -- Minimum altitude to trigger emergencies (meters)
-    checkInterval = 30000, -- How often to check for emergencies (ms)
+    model = 's_m_m_pilot_02',
+    dutyModel = 's_m_m_pilot_01',
+    scenario = 'WORLD_HUMAN_CLIPBOARD',
+}
 
-    -- Reputation changes
-    successBonus = {
-        engine_fire = 10,
-        gear_failure = 8,
-        fuel_leak = 8,
-        electrical_failure = 5,
-        hydraulic_failure = 7,
-        bird_strike = 3,
+-- Blips
+Config.Blips = {
+    airport = {
+        sprite = 423,
+        color = 3,
+        scale = 0.8,
+        label = 'Airport',
     },
-    failPenalty = {
-        engine_fire = -25,
-        gear_failure = -15,
-        fuel_leak = -20,
-        electrical_failure = -10,
-        hydraulic_failure = -15,
-        bird_strike = -5,
-        crash = -25,
+    helipad = {
+        sprite = 360,
+        color = 1,
+        scale = 0.6,
+        label = 'Helipad',
     },
 }
 
--- Pilot Logbook NUI
-Config.LogbookKeybind = nil -- Set to key like 'F7' to enable keybind, nil to disable
+-- Target interaction distance
+Config.InteractDistance = Constants.DIST_INTERACT
+
+-- Crew system
+Config.Crew = {
+    maxSize = 4,         -- captain + copilot + attendant + 1
+    inviteRange = 10.0,  -- meters
+    inviteTimeout = 30,  -- seconds
+}
+
+return Config

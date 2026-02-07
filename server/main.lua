@@ -1,954 +1,396 @@
-local QBCore = exports['qb-core']:GetCoreObject()
+-- DPS Airlines v3.0 - Server Main
+-- Handles initialization, startup validation, and core server events
 
--- Active flights tracking
-local ActiveFlights = {}
-local ActiveCharters = {}
+local resourceName = GetCurrentResourceName()
 
--- =====================================
--- STATE BAG WEATHER SYSTEM
--- Eliminates client polling - weather synced via GlobalState
--- =====================================
+-- ============================================================================
+-- STARTUP VALIDATION
+-- ============================================================================
+local function ValidateStartup()
+    local errors = {}
 
-local CurrentWeatherState = {
-    weather = 'CLEAR',
-    canFly = true,
-    delayMinutes = 0,
-    payBonus = 1.0,
-    lastUpdate = os.time()
-}
+    -- Check ox_lib
+    if GetResourceState('ox_lib') ~= 'started' then
+        errors[#errors + 1] = 'ox_lib is not started'
+    end
 
--- Weather helper functions (defined before use)
-local function GetCurrentServerWeather()
-    -- Try to get from qb-weathersync
-    local success, weather = pcall(function()
-        return exports['qb-weathersync']:getWeatherState()
+    -- Check oxmysql
+    if GetResourceState('oxmysql') ~= 'started' then
+        errors[#errors + 1] = 'oxmysql is not started'
+    end
+
+    -- Check bridge loaded
+    if not Bridge or not Bridge.FrameworkName then
+        errors[#errors + 1] = 'Bridge failed to load - no supported framework detected'
+    end
+
+    -- Check database tables
+    local requiredTables = {
+        'airline_pilot_stats',
+        'airline_role_assignments',
+        'airline_flights',
+        'airline_crew_assignments',
+        'airline_ground_tasks',
+        'airline_passenger_reviews',
+        'airline_cargo_contracts',
+        'airline_heli_ops',
+        'airline_flight_tracker',
+        'airline_dispatch_schedules',
+        'airline_maintenance',
+        'airline_incidents',
+        'airline_flight_school',
+        'airline_company_ledger',
+    }
+
+    for _, tableName in ipairs(requiredTables) do
+        local success, result = pcall(function()
+            return MySQL.scalar.await('SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?', { tableName })
+        end)
+        if not success or (result and result == 0) then
+            errors[#errors + 1] = 'Missing database table: ' .. tableName
+        end
+    end
+
+    if #errors > 0 then
+        print('^1[DPS-Airlines] STARTUP ERRORS:^0')
+        for _, err in ipairs(errors) do
+            print('^1  - ' .. err .. '^0')
+        end
+        print('^1[DPS-Airlines] Resource may not function correctly!^0')
+        return false
+    end
+
+    print('^2[DPS-Airlines] Startup validation passed^0')
+    return true
+end
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+CreateThread(function()
+    Wait(2000) -- Wait for DB to be ready
+    ValidateStartup()
+    print(string.format('^2[DPS-Airlines] v3.0 loaded successfully | Framework: %s^0', Bridge.FrameworkName))
+end)
+
+-- ============================================================================
+-- PLAYER STAT MANAGEMENT
+-- ============================================================================
+
+---Ensure pilot stats exist for a player
+---@param citizenid string
+---@param role string|nil
+local function EnsurePilotStats(citizenid, role)
+    local exists = MySQL.scalar.await('SELECT COUNT(*) FROM airline_pilot_stats WHERE citizenid = ?', { citizenid })
+    if exists == 0 then
+        MySQL.insert.await(
+            'INSERT INTO airline_pilot_stats (citizenid, role) VALUES (?, ?)',
+            { citizenid, role or Constants.ROLE_GROUND_CREW }
+        )
+    end
+end
+
+---Ensure role assignment exists
+---@param citizenid string
+---@param role string
+---@param assignedBy string|nil
+local function EnsureRoleAssignment(citizenid, role, assignedBy)
+    local exists = MySQL.scalar.await('SELECT COUNT(*) FROM airline_role_assignments WHERE citizenid = ?', { citizenid })
+    if exists == 0 then
+        MySQL.insert.await(
+            'INSERT INTO airline_role_assignments (citizenid, role, assigned_by) VALUES (?, ?, ?)',
+            { citizenid, role, assignedBy or 'system' }
+        )
+    end
+end
+
+-- ============================================================================
+-- CALLBACKS
+-- ============================================================================
+
+-- Get player's airline data
+lib.callback.register('dps-airlines:server:getPlayerData', function(source)
+    local ok, reason = Validation.Check(source, { employee = true })
+    if not ok then return nil end
+
+    local player = Bridge.GetPlayer(source)
+    if not player then return nil end
+
+    EnsurePilotStats(player.identifier)
+    EnsureRoleAssignment(player.identifier, Validation.GetPlayerRole(source) or Constants.ROLE_GROUND_CREW)
+
+    local stats = Cache.Get('stats_' .. player.identifier, Constants.CACHE_PILOT_STATS, function()
+        return MySQL.single.await('SELECT * FROM airline_pilot_stats WHERE citizenid = ?', { player.identifier })
     end)
 
-    if success and weather then
-        return weather
-    end
-
-    return 'CLEAR'
-end
-
-local function EvaluateWeatherConditions(weather)
-    -- Check if grounded
-    for _, grounded in ipairs(Config.Weather.groundedWeather or {}) do
-        if weather == grounded then
-            return {
-                canFly = false,
-                delay = 0,
-                bonus = 1.0,
-                reason = 'All flights grounded due to severe weather'
-            }
-        end
-    end
-
-    -- Check for delays
-    local delayInfo = Config.Weather.delays and Config.Weather.delays[weather]
-    if delayInfo then
-        local roll = math.random(1, 100)
-        if roll <= delayInfo.chance then
-            return {
-                canFly = true,
-                delay = delayInfo.delayMinutes,
-                bonus = delayInfo.payBonus,
-                reason = string.format('%s conditions - %d min delay', weather, delayInfo.delayMinutes)
-            }
-        end
-    end
-
-    return { canFly = true, delay = 0, bonus = 1.0 }
-end
-
--- Initialize global weather state
-CreateThread(function()
-    Wait(1000)
-    GlobalState.airlineWeather = CurrentWeatherState
-    GlobalState.atcStatus = 'operational' -- operational, busy, closed
-    print('^2[dps-airlines]^7 GlobalState weather/ATC initialized')
-end)
-
--- Periodic weather check and state bag update (server-side only)
-CreateThread(function()
-    while true do
-        Wait(Config.Weather.checkInterval or 60000)
-
-        if Config.Weather.enabled then
-            local weather = GetCurrentServerWeather()
-            local conditions = EvaluateWeatherConditions(weather)
-
-            CurrentWeatherState = {
-                weather = weather,
-                canFly = conditions.canFly,
-                delayMinutes = conditions.delay,
-                payBonus = conditions.bonus,
-                reason = conditions.reason,
-                lastUpdate = os.time()
-            }
-
-            -- Update GlobalState - clients auto-sync
-            GlobalState.airlineWeather = CurrentWeatherState
-
-            -- Notify pilots of weather changes
-            if not conditions.canFly then
-                local players = QBCore.Functions.GetQBPlayers()
-                for _, player in pairs(players) do
-                    if player.PlayerData.job.name == Config.Job and player.PlayerData.job.onduty then
-                        Notify(player.PlayerData.source, 'Weather Alert: ' .. conditions.reason, 'error')
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- Export for other resources
-exports('GetWeatherState', function()
-    return CurrentWeatherState
-end)
-
--- =====================================
--- UTILITY FUNCTIONS
--- =====================================
-
-local function GetPlayer(source)
-    return QBCore.Functions.GetPlayer(source)
-end
-
-local function Notify(source, msg, type)
-    TriggerClientEvent('ox_lib:notify', source, {
-        title = 'Airlines',
-        description = msg,
-        type = type or 'inform'
-    })
-end
-
-local function GenerateFlightNumber()
-    local prefix = Config.ATC.callsigns.prefix
-    local num = math.random(100, 999)
-    return string.format(Config.ATC.callsigns.format, prefix, num)
-end
-
-local function GetPilotStats(citizenid)
-    local result = MySQL.single.await('SELECT * FROM airline_pilot_stats WHERE citizenid = ?', { citizenid })
-    if not result then
-        MySQL.insert.await('INSERT INTO airline_pilot_stats (citizenid) VALUES (?)', { citizenid })
-        return {
-            citizenid = citizenid,
-            total_flights = 0,
-            total_passengers = 0,
-            total_cargo = 0,
-            total_earnings = 0,
-            flight_hours = 0,
-            reputation = 0,
-            license_obtained = nil,
-            lessons_completed = '[]'
-        }
-    end
-    return result
-end
-
-local function UpdatePilotStats(citizenid, data)
-    MySQL.update.await([[
-        UPDATE airline_pilot_stats SET
-            total_flights = total_flights + ?,
-            total_passengers = total_passengers + ?,
-            total_cargo = total_cargo + ?,
-            total_earnings = total_earnings + ?,
-            flight_hours = flight_hours + ?,
-            reputation = reputation + ?
-        WHERE citizenid = ?
-    ]], {
-        data.flights or 0,
-        data.passengers or 0,
-        data.cargo or 0,
-        data.earnings or 0,
-        data.hours or 0,
-        data.rep or 0,
-        citizenid
-    })
-end
-
-local function HasPilotLicense(citizenid)
-    local stats = GetPilotStats(citizenid)
-    return stats.license_obtained ~= nil
-end
-
-local function GetPlaneMaintenanceStatus(model)
-    local result = MySQL.single.await('SELECT * FROM airline_maintenance WHERE plane_model = ? AND owned_by = ?', { model, 'company' })
-    return result
-end
-
-local function UpdatePlaneFlights(model)
-    MySQL.update.await('UPDATE airline_maintenance SET flights_since_service = flights_since_service + 1 WHERE plane_model = ? AND owned_by = ?', { model, 'company' })
-end
-
-local function ServicePlane(model)
-    MySQL.update.await([[
-        UPDATE airline_maintenance SET
-            flights_since_service = 0,
-            last_service = NOW(),
-            service_history = JSON_ARRAY_APPEND(COALESCE(service_history, '[]'), '$', JSON_OBJECT('date', NOW(), 'type', 'full_service'))
-        WHERE plane_model = ? AND owned_by = ?
-    ]], { model, 'company' })
-end
-
--- =====================================
--- CALLBACKS
--- =====================================
-
-lib.callback.register('dps-airlines:server:getPlayerData', function(source)
-    local Player = GetPlayer(source)
-    if not Player then return nil end
-
-    local citizenid = Player.PlayerData.citizenid
-    local stats = GetPilotStats(citizenid)
-    local job = Player.PlayerData.job
-
-    -- Get available planes based on reputation
-    local availablePlanes = {}
-    for model, data in pairs(Config.Planes) do
-        if stats.reputation >= data.repRequired then
-            availablePlanes[model] = data
-        end
-    end
+    local roleAssignment = MySQL.single.await('SELECT * FROM airline_role_assignments WHERE citizenid = ?', { player.identifier })
 
     return {
-        citizenid = citizenid,
-        job = job,
         stats = stats,
-        availablePlanes = availablePlanes,
-        hasLicense = stats.license_obtained ~= nil,
-        onDuty = job.onduty
+        role = roleAssignment and roleAssignment.role or Constants.ROLE_GROUND_CREW,
+        identifier = player.identifier,
+        name = player.fullName,
+        grade = player.job.grade,
+        onDuty = player.job.onDuty,
     }
 end)
 
+-- Get pilot stats
 lib.callback.register('dps-airlines:server:getPilotStats', function(source)
-    local Player = GetPlayer(source)
-    if not Player then return nil end
-    return GetPilotStats(Player.PlayerData.citizenid)
+    local ok = Validation.Check(source, { employee = true })
+    if not ok then return nil end
+
+    local player = Bridge.GetPlayer(source)
+    if not player then return nil end
+
+    return Cache.Get('stats_' .. player.identifier, Constants.CACHE_PILOT_STATS, function()
+        return MySQL.single.await('SELECT * FROM airline_pilot_stats WHERE citizenid = ?', { player.identifier })
+    end)
 end)
 
-lib.callback.register('dps-airlines:server:getMaintenanceStatus', function(source, model)
-    return GetPlaneMaintenanceStatus(model)
+-- Get flight log
+lib.callback.register('dps-airlines:server:getFlightLog', function(source, page, limit)
+    local ok = Validation.Check(source, { employee = true })
+    if not ok then return {} end
+
+    local player = Bridge.GetPlayer(source)
+    if not player then return {} end
+
+    page = math.max(1, tonumber(page) or 1)
+    limit = math.min(50, math.max(1, tonumber(limit) or 10))
+    local offset = (page - 1) * limit
+
+    return MySQL.query.await(
+        'SELECT * FROM airline_flights WHERE pilot_citizenid = ? OR copilot_citizenid = ? ORDER BY departure_time DESC LIMIT ? OFFSET ?',
+        { player.identifier, player.identifier, limit, offset }
+    )
 end)
 
-lib.callback.register('dps-airlines:server:canUsePlane', function(source, model)
-    local Player = GetPlayer(source)
-    if not Player then return false, 'Player not found' end
+-- Get type ratings
+lib.callback.register('dps-airlines:server:getTypeRatings', function(source)
+    local ok = Validation.Check(source, { employee = true })
+    if not ok then return nil end
 
-    local stats = GetPilotStats(Player.PlayerData.citizenid)
-    local planeData = Config.Planes[model]
+    local player = Bridge.GetPlayer(source)
+    if not player then return nil end
 
-    if not planeData then
-        return false, 'Invalid plane model'
+    local stats = MySQL.single.await('SELECT type_ratings FROM airline_pilot_stats WHERE citizenid = ?', { player.identifier })
+    if stats and stats.type_ratings then
+        return json.decode(stats.type_ratings) or {}
     end
-
-    if stats.reputation < planeData.repRequired then
-        return false, string.format('Need %d reputation (you have %d)', planeData.repRequired, stats.reputation)
-    end
-
-    -- Check maintenance
-    if Config.Maintenance.enabled then
-        local maintenance = GetPlaneMaintenanceStatus(model)
-        if maintenance and maintenance.flights_since_service >= Config.Maintenance.flightsBeforeService then
-            return false, 'This aircraft requires maintenance'
-        end
-    end
-
-    return true, nil
+    return {}
 end)
 
-lib.callback.register('dps-airlines:server:getAvailableFlights', function(source)
-    local Player = GetPlayer(source)
-    if not Player then return {} end
+-- Get incidents
+lib.callback.register('dps-airlines:server:getIncidents', function(source, page, limit)
+    local ok = Validation.Check(source, { employee = true })
+    if not ok then return {} end
 
-    local citizenid = Player.PlayerData.citizenid
-    local stats = GetPilotStats(citizenid)
+    local player = Bridge.GetPlayer(source)
+    if not player then return {} end
 
-    local flights = MySQL.query.await([[
-        SELECT * FROM airline_dispatch
-        WHERE status = 'available'
-        AND (expires_at IS NULL OR expires_at > NOW())
-        ORDER BY
-            CASE priority
-                WHEN 'urgent' THEN 1
-                WHEN 'high' THEN 2
-                WHEN 'normal' THEN 3
-                ELSE 4
-            END,
-            created_at ASC
-        LIMIT 10
+    page = math.max(1, tonumber(page) or 1)
+    limit = math.min(50, math.max(1, tonumber(limit) or 10))
+    local offset = (page - 1) * limit
+
+    return MySQL.query.await(
+        'SELECT * FROM airline_incidents WHERE citizenid = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        { player.identifier, limit, offset }
+    )
+end)
+
+-- Toggle duty
+lib.callback.register('dps-airlines:server:toggleDuty', function(source)
+    local ok, reason = Validation.Check(source, {
+        employee = true,
+        rateLimit = { action = 'toggleDuty', cooldown = Constants.THROTTLE_SLOW },
+    })
+    if not ok then return false, reason end
+
+    local player = Bridge.GetPlayer(source)
+    if not player then return false end
+
+    local newDuty = not player.job.onDuty
+    player.setJobDuty(newDuty)
+
+    return true, newDuty
+end)
+
+-- ============================================================================
+-- MANAGEMENT CALLBACKS (Boss only)
+-- ============================================================================
+
+-- Get all employees
+lib.callback.register('dps-airlines:server:getEmployees', function(source)
+    local ok, reason = Validation.Check(source, { employee = true, canManage = true })
+    if not ok then return nil, reason end
+
+    return MySQL.query.await([[
+        SELECT ps.*, ra.role as assigned_role
+        FROM airline_pilot_stats ps
+        LEFT JOIN airline_role_assignments ra ON ps.citizenid = ra.citizenid
+        ORDER BY ra.role, ps.flight_hours DESC
     ]])
-
-    -- Filter flights based on plane access
-    local available = {}
-    for _, flight in ipairs(flights or {}) do
-        if flight.plane_required then
-            local planeData = Config.Planes[flight.plane_required]
-            if planeData and stats.reputation >= planeData.repRequired then
-                table.insert(available, flight)
-            end
-        else
-            table.insert(available, flight)
-        end
-    end
-
-    return available
 end)
 
--- =====================================
--- EVENTS
--- =====================================
+-- Set employee role
+lib.callback.register('dps-airlines:server:setEmployeeRole', function(source, targetCitizenId, newRole)
+    local ok, reason = Validation.Check(source, { employee = true, canManage = true })
+    if not ok then return false, reason end
 
-RegisterNetEvent('dps-airlines:server:toggleDuty', function()
+    if not Config.Roles[newRole] then return false, 'Invalid role' end
+    if not Validation.ValidateString(targetCitizenId, 50) then return false, 'Invalid citizen ID' end
+
+    local manager = Bridge.GetPlayer(source)
+    if not manager then return false end
+
+    local roleConfig = Config.Roles[newRole]
+
+    -- Update role assignment
+    MySQL.query.await(
+        'INSERT INTO airline_role_assignments (citizenid, role, assigned_by) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE role = ?, assigned_by = ?',
+        { targetCitizenId, newRole, manager.identifier, newRole, manager.identifier }
+    )
+
+    -- Update job grade for target player
+    local targetPlayer = Bridge.GetPlayerByIdentifier(targetCitizenId)
+    if targetPlayer then
+        targetPlayer.setJob(Config.Job, roleConfig.grade)
+    end
+
+    -- Update stats
+    MySQL.update.await('UPDATE airline_pilot_stats SET role = ? WHERE citizenid = ?', { newRole, targetCitizenId })
+
+    Cache.InvalidatePrefix('stats_')
+    return true
+end)
+
+-- Fire employee
+lib.callback.register('dps-airlines:server:fireEmployee', function(source, targetCitizenId)
+    local ok, reason = Validation.Check(source, { employee = true, canManage = true })
+    if not ok then return false, reason end
+
+    local manager = Bridge.GetPlayer(source)
+    if not manager then return false end
+
+    -- Can't fire yourself
+    if manager.identifier == targetCitizenId then return false, 'Cannot fire yourself' end
+
+    -- Remove role assignment
+    MySQL.query.await('DELETE FROM airline_role_assignments WHERE citizenid = ?', { targetCitizenId })
+
+    -- Set to unemployed via bridge
+    local targetPlayer = Bridge.GetPlayerByIdentifier(targetCitizenId)
+    if targetPlayer then
+        targetPlayer.setJob('unemployed', 0)
+    end
+
+    Cache.InvalidatePrefix('stats_')
+    return true
+end)
+
+-- Get society balance
+lib.callback.register('dps-airlines:server:getSocietyBalance', function(source)
+    local ok = Validation.Check(source, { employee = true, canManage = true })
+    if not ok then return 0 end
+
+    return Bridge.GetSocietyBalance(Config.SocietyAccount)
+end)
+
+-- Get company stats
+lib.callback.register('dps-airlines:server:getCompanyStats', function(source)
+    local ok = Validation.Check(source, { employee = true })
+    if not ok then return nil end
+
+    return Cache.Get('company_stats', Constants.CACHE_COMPANY_STATS, function()
+        local totalFlights = MySQL.scalar.await('SELECT COUNT(*) FROM airline_flights') or 0
+        local totalEmployees = MySQL.scalar.await('SELECT COUNT(*) FROM airline_pilot_stats') or 0
+        local totalEarnings = MySQL.scalar.await('SELECT COALESCE(SUM(total_pay), 0) FROM airline_flights WHERE status = ?', { Constants.DB_STATUS_COMPLETED }) or 0
+        local avgRating = MySQL.scalar.await('SELECT COALESCE(AVG(overall_rating), 5.0) FROM airline_passenger_reviews') or 5.0
+        local activeContracts = MySQL.scalar.await('SELECT COUNT(*) FROM airline_cargo_contracts WHERE status = ?', { Constants.DB_STATUS_ACTIVE }) or 0
+
+        return {
+            totalFlights = totalFlights,
+            totalEmployees = totalEmployees,
+            totalEarnings = totalEarnings,
+            averageRating = math.floor(avgRating * 10) / 10,
+            activeContracts = activeContracts,
+            balance = Bridge.GetSocietyBalance(Config.SocietyAccount),
+        }
+    end)
+end)
+
+-- ============================================================================
+-- HIRE PLAYER
+-- ============================================================================
+RegisterNetEvent('dps-airlines:server:hirePlayer', function(targetSource, role)
     local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    if Player.PlayerData.job.name ~= Config.Job then
-        Notify(source, 'You are not a pilot', 'error')
+    local ok, reason = Validation.Check(source, { employee = true, canManage = true })
+    if not ok then
+        TriggerClientEvent('dps-airlines:client:notify', source, reason or 'Not authorized')
         return
     end
 
-    local onDuty = not Player.PlayerData.job.onduty
-    Player.Functions.SetJobDuty(onDuty)
-
-    Notify(source, onDuty and 'You are now on duty' or 'You are now off duty', 'success')
-    TriggerClientEvent('dps-airlines:client:dutyChanged', source, onDuty)
-end)
-
-RegisterNetEvent('dps-airlines:server:startFlight', function(data)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-    local flightNumber = GenerateFlightNumber()
-
-    -- Create flight record
-    local flightId = MySQL.insert.await([[
-        INSERT INTO airline_flights
-        (flight_number, pilot_citizenid, from_airport, to_airport, flight_type, plane_model, passengers, cargo_weight, status, started_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'departed', NOW())
-    ]], {
-        flightNumber,
-        citizenid,
-        data.from,
-        data.to,
-        data.flightType,
-        data.plane,
-        data.passengers or 0,
-        data.cargo or 0
-    })
-
-    ActiveFlights[source] = {
-        id = flightId,
-        flightNumber = flightNumber,
-        from = data.from,
-        to = data.to,
-        plane = data.plane,
-        flightType = data.flightType,
-        passengers = data.passengers or 0,
-        cargo = data.cargo or 0,
-        startTime = os.time()
-    }
-
-    -- Update plane maintenance counter
-    if Config.Maintenance.enabled then
-        UpdatePlaneFlights(data.plane)
-    end
-
-    TriggerClientEvent('dps-airlines:client:flightStarted', source, {
-        flightNumber = flightNumber,
-        destination = Locations.Airports[data.to]
-    })
-
-    Notify(source, string.format('Flight %s departed to %s', flightNumber, Locations.Airports[data.to].label), 'success')
-end)
-
-RegisterNetEvent('dps-airlines:server:completeFlight', function(landingData)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local flight = ActiveFlights[source]
-    if not flight then
-        Notify(source, 'No active flight found', 'error')
+    if not Config.Roles[role] then
+        TriggerClientEvent('dps-airlines:client:notify', source, 'Invalid role')
         return
     end
 
-    local citizenid = Player.PlayerData.citizenid
-    local planeData = Config.Planes[flight.plane]
-    local destAirport = Locations.Airports[flight.to]
-
-    -- Calculate payment
-    local basePay = planeData.basePayment
-    local passengerPay = flight.passengers * Config.Passengers.payPerPassenger
-    local cargoPay = flight.cargo * Config.Cargo.payPerKg
-    local distanceBonus = destAirport.distance * 10
-
-    local totalPay = math.floor(basePay + passengerPay + cargoPay + distanceBonus)
-
-    -- Apply weather bonus if applicable
-    local weatherState = GlobalState.airlineWeather
-    if weatherState and weatherState.payBonus > 1.0 then
-        totalPay = math.floor(totalPay * weatherState.payBonus)
+    local targetPlayer = Bridge.GetPlayer(targetSource)
+    if not targetPlayer then
+        TriggerClientEvent('dps-airlines:client:notify', source, 'Player not found')
+        return
     end
 
-    -- Calculate flight time
-    local arrivalTime = os.time()
-    local flightTimeSeconds = arrivalTime - flight.startTime
-    local flightTimeHours = flightTimeSeconds / 3600
+    local roleConfig = Config.Roles[role]
+    targetPlayer.setJob(Config.Job, roleConfig.grade)
 
-    -- Determine landing quality from client data
-    local landingQuality = 'normal'
-    if landingData and landingData.landingSpeed then
-        if landingData.landingSpeed < 5 then
-            landingQuality = 'smooth'
-        elseif landingData.landingSpeed > 15 then
-            landingQuality = 'hard'
-        end
-    end
+    EnsurePilotStats(targetPlayer.identifier, role)
+    EnsureRoleAssignment(targetPlayer.identifier, role, Bridge.GetPlayer(source).identifier)
 
-    -- Update database
-    MySQL.update.await([[
-        UPDATE airline_flights SET
-            status = 'arrived',
-            payment = ?,
-            completed_at = NOW()
-        WHERE id = ?
-    ]], { totalPay, flight.id })
+    MySQL.update.await('UPDATE airline_pilot_stats SET role = ? WHERE citizenid = ?', { role, targetPlayer.identifier })
 
-    -- Create detailed logbook entry
-    local logbookData = {
-        flightId = flight.id,
-        flightNumber = flight.flightNumber,
-        from = flight.from,
-        to = flight.to,
-        aircraft = flight.plane,
-        flightType = flight.flightType,
-        passengers = flight.passengers,
-        cargo = flight.cargo,
-        departureTime = flight.startTime,
-        arrivalTime = arrivalTime,
-        payment = totalPay,
-        landingQuality = landingQuality,
-        landings = 1,
-        weather = weatherState and weatherState.weather or 'CLEAR',
-        status = 'completed'
-    }
+    TriggerClientEvent('dps-airlines:client:notify', source, 'Hired ' .. targetPlayer.fullName .. ' as ' .. roleConfig.label)
+    TriggerClientEvent('dps-airlines:client:notify', targetSource, 'You have been hired as ' .. roleConfig.label .. ' at DPS Airlines!')
 
-    -- Use the logbook system to track detailed stats
+    Cache.InvalidatePrefix('stats_')
+end)
+
+-- ============================================================================
+-- EMERGENCY LOGGING
+-- ============================================================================
+RegisterNetEvent('dps-airlines:server:logEmergency', function(flightId, emergencyType)
+    local source = source
+    if not Validation.IsAirlineEmployee(source) then return end
+    if not Validation.RateLimit(source, 'logEmergency', Constants.THROTTLE_SLOW) then return end
+
+    local player = Bridge.GetPlayer(source)
+    if not player then return end
+
     pcall(function()
-        exports['dps-airlines']:CreateLogbookEntry(citizenid, logbookData)
+        MySQL.insert.await(
+            'INSERT INTO airline_incidents (flight_id, citizenid, incident_type, severity, description) VALUES (?, ?, ?, ?, ?)',
+            { flightId, player.identifier, emergencyType, 'moderate', 'In-flight emergency: ' .. emergencyType }
+        )
+
+        MySQL.update.await(
+            'UPDATE airline_pilot_stats SET incidents = incidents + 1 WHERE citizenid = ?',
+            { player.identifier }
+        )
+    end)
+end)
+
+-- ============================================================================
+-- RESOURCE CLEANUP
+-- ============================================================================
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= resourceName then return end
+
+    -- Clean up active flight trackers
+    pcall(function()
+        MySQL.query.await('DELETE FROM airline_flight_tracker')
     end)
 
-    -- Pay the player
-    if Config.UseSocietyFunds then
-        local success = exports['qb-management']:RemoveMoney('pilot', totalPay)
-        if success then
-            Player.Functions.AddMoney(Config.PaymentAccount, totalPay, 'airline-flight-payment')
-        else
-            -- Fallback to direct payment if society doesn't have funds
-            Player.Functions.AddMoney(Config.PaymentAccount, totalPay, 'airline-flight-payment')
-        end
-    else
-        Player.Functions.AddMoney(Config.PaymentAccount, totalPay, 'airline-flight-payment')
-    end
-
-    -- Clear active flight
-    ActiveFlights[source] = nil
-
-    TriggerClientEvent('dps-airlines:client:flightCompleted', source, {
-        flightNumber = flight.flightNumber,
-        payment = totalPay,
-        passengers = flight.passengers,
-        cargo = flight.cargo,
-        flightTime = flightTimeHours,
-        landingQuality = landingQuality
-    })
-
-    Notify(source, string.format('Flight completed! Earned $%d', totalPay), 'success')
+    Cache.Clear()
+    print('^3[DPS-Airlines] Resource stopped, cleaned up flight trackers^0')
 end)
-
-RegisterNetEvent('dps-airlines:server:cancelFlight', function()
-    local source = source
-    local flight = ActiveFlights[source]
-
-    if flight then
-        MySQL.update.await('UPDATE airline_flights SET status = ? WHERE id = ?', { 'cancelled', flight.id })
-        ActiveFlights[source] = nil
-        Notify(source, 'Flight cancelled', 'warning')
-    end
-end)
-
-RegisterNetEvent('dps-airlines:server:servicePlane', function(model)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local planeData = Config.Planes[model]
-    if not planeData then return end
-
-    local cost = Config.Maintenance.serviceCost[planeData.category]
-
-    -- Check if player has money (for boss) or use society
-    local canPay = false
-    if Player.PlayerData.job.grade.level >= Config.BossGrade then
-        canPay = exports['qb-management']:RemoveMoney('pilot', cost)
-    end
-
-    if canPay then
-        ServicePlane(model)
-        Notify(source, string.format('%s has been serviced for $%d', planeData.label, cost), 'success')
-        TriggerClientEvent('dps-airlines:client:planeServiced', source, model)
-    else
-        Notify(source, 'Insufficient society funds', 'error')
-    end
-end)
-
--- =====================================
--- FLIGHT SCHOOL
--- =====================================
-
-RegisterNetEvent('dps-airlines:server:startLesson', function(lessonId)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local lesson = nil
-    for _, l in ipairs(Config.FlightSchool.lessons) do
-        if l.name == lessonId then
-            lesson = l
-            break
-        end
-    end
-
-    if not lesson then
-        Notify(source, 'Invalid lesson', 'error')
-        return
-    end
-
-    TriggerClientEvent('dps-airlines:client:startLesson', source, lesson)
-end)
-
-RegisterNetEvent('dps-airlines:server:completeLesson', function(lessonId)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-    local stats = GetPilotStats(citizenid)
-
-    local lessons = json.decode(stats.lessons_completed) or {}
-
-    -- Check if already completed
-    for _, completed in ipairs(lessons) do
-        if completed == lessonId then
-            Notify(source, 'Lesson already completed', 'error')
-            return
-        end
-    end
-
-    -- Find lesson reward
-    local reward = 0
-    for _, lesson in ipairs(Config.FlightSchool.lessons) do
-        if lesson.name == lessonId then
-            reward = lesson.reward
-            break
-        end
-    end
-
-    table.insert(lessons, lessonId)
-
-    MySQL.update.await('UPDATE airline_pilot_stats SET lessons_completed = ? WHERE citizenid = ?', {
-        json.encode(lessons),
-        citizenid
-    })
-
-    Player.Functions.AddMoney('cash', reward, 'flight-lesson-reward')
-    Notify(source, string.format('Lesson completed! Earned $%d', reward), 'success')
-
-    -- Check if all lessons completed
-    if #lessons >= Config.FlightSchool.requiredLessons then
-        TriggerClientEvent('dps-airlines:client:canGetLicense', source)
-    end
-end)
-
-RegisterNetEvent('dps-airlines:server:purchaseLicense', function()
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-    local stats = GetPilotStats(citizenid)
-
-    if stats.license_obtained then
-        Notify(source, 'You already have a pilot license', 'error')
-        return
-    end
-
-    local lessons = json.decode(stats.lessons_completed) or {}
-    if #lessons < Config.FlightSchool.requiredLessons then
-        Notify(source, 'Complete all lessons first', 'error')
-        return
-    end
-
-    local cost = Config.FlightSchool.licenseCost
-    if Player.Functions.RemoveMoney('cash', cost, 'pilot-license-purchase') or
-       Player.Functions.RemoveMoney('bank', cost, 'pilot-license-purchase') then
-
-        MySQL.update.await('UPDATE airline_pilot_stats SET license_obtained = NOW() WHERE citizenid = ?', { citizenid })
-
-        -- Give license item
-        exports['ox_inventory']:AddItem(source, 'pilots_license', 1)
-
-        Notify(source, 'Congratulations! You are now a licensed pilot!', 'success')
-    else
-        Notify(source, string.format('You need $%d for the license', cost), 'error')
-    end
-end)
-
--- =====================================
--- PLAYER DISCONNECT HANDLING
--- =====================================
-
-AddEventHandler('playerDropped', function()
-    local source = source
-    if ActiveFlights[source] then
-        MySQL.update.await('UPDATE airline_flights SET status = ? WHERE id = ?', { 'cancelled', ActiveFlights[source].id })
-        ActiveFlights[source] = nil
-    end
-    if ActiveCharters[source] then
-        ActiveCharters[source] = nil
-    end
-end)
-
--- =====================================
--- ADMIN COMMANDS
--- =====================================
-
-QBCore.Commands.Add('setpilotgrade', 'Set pilot job grade (Admin)', {
-    { name = 'id', help = 'Player ID' },
-    { name = 'grade', help = 'Grade (0-2)' }
-}, true, function(source, args)
-    local targetId = tonumber(args[1])
-    local grade = tonumber(args[2])
-
-    if not targetId or not grade then return end
-
-    local Player = QBCore.Functions.GetPlayer(targetId)
-    if Player then
-        Player.Functions.SetJob('pilot', grade)
-        Notify(source, 'Pilot grade updated', 'success')
-        Notify(targetId, 'Your pilot grade has been updated', 'success')
-    end
-end, 'admin')
-
-QBCore.Commands.Add('resetpilotstats', 'Reset pilot stats (Admin)', {
-    { name = 'id', help = 'Player ID' }
-}, true, function(source, args)
-    local targetId = tonumber(args[1])
-    if not targetId then return end
-
-    local Player = QBCore.Functions.GetPlayer(targetId)
-    if Player then
-        MySQL.update.await('DELETE FROM airline_pilot_stats WHERE citizenid = ?', { Player.PlayerData.citizenid })
-        Notify(source, 'Pilot stats reset', 'success')
-    end
-end, 'admin')
-
--- =====================================
--- CHECKRIDE SYSTEM (Server)
--- Recurrent training for inactive pilots
--- =====================================
-
-local CheckrideConfig = {
-    inactivityDays = 14,
-    warningDays = 10
-}
-
-lib.callback.register('dps-airlines:server:getCheckrideStatus', function(source)
-    local Player = GetPlayer(source)
-    if not Player then return nil end
-
-    local citizenid = Player.PlayerData.citizenid
-    local stats = GetPilotStats(citizenid)
-
-    if not stats.last_flight then
-        -- New pilot, no checkride needed
-        return { required = false, warning = false }
-    end
-
-    -- Calculate days since last flight
-    local lastFlight = MySQL.single.await([[
-        SELECT DATEDIFF(NOW(), completed_at) as days_inactive
-        FROM airline_flights
-        WHERE pilot_citizenid = ? AND status = 'arrived'
-        ORDER BY completed_at DESC
-        LIMIT 1
-    ]], { citizenid })
-
-    if not lastFlight then
-        return { required = false, warning = false }
-    end
-
-    local daysInactive = lastFlight.days_inactive or 0
-
-    if daysInactive >= CheckrideConfig.inactivityDays then
-        -- Check if they already have a pending/recent passed checkride
-        local recentCheckride = MySQL.single.await([[
-            SELECT * FROM airline_checkrides
-            WHERE pilot_citizenid = ? AND status = 'passed'
-            AND completed_at > DATE_SUB(NOW(), INTERVAL 1 DAY)
-        ]], { citizenid })
-
-        if recentCheckride then
-            return { required = false, warning = false }
-        end
-
-        return {
-            required = true,
-            daysInactive = daysInactive
-        }
-    elseif daysInactive >= CheckrideConfig.warningDays then
-        return {
-            required = false,
-            warning = true,
-            daysRemaining = CheckrideConfig.inactivityDays - daysInactive
-        }
-    end
-
-    return { required = false, warning = false }
-end)
-
-RegisterNetEvent('dps-airlines:server:completeCheckride', function(data)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-
-    -- Record checkride result
-    MySQL.insert.await([[
-        INSERT INTO airline_checkrides
-        (pilot_citizenid, checkride_type, status, score, notes, completed_at)
-        VALUES (?, 'recurrent', ?, ?, ?, NOW())
-    ]], {
-        citizenid,
-        data.passed and 'passed' or 'failed',
-        data.score,
-        data.reason or json.encode(data.penalties or {})
-    })
-
-    if data.passed then
-        -- Update last flight to reset the timer
-        MySQL.update.await([[
-            UPDATE airline_pilot_stats
-            SET checkride_due = NULL, last_flight = NOW()
-            WHERE citizenid = ?
-        ]], { citizenid })
-
-        Notify(source, 'Checkride passed! You may now accept flights.', 'success')
-    else
-        Notify(source, 'Checkride failed. Please try again.', 'error')
-    end
-end)
-
--- Update last_flight when a flight is completed
-local originalCompleteFlight = nil
-AddEventHandler('dps-airlines:server:completeFlight', function()
-    local source = source
-    local Player = GetPlayer(source)
-    if Player then
-        MySQL.update.await('UPDATE airline_pilot_stats SET last_flight = NOW() WHERE citizenid = ?', {
-            Player.PlayerData.citizenid
-        })
-    end
-end)
-
--- =====================================
--- BLACK BOX FLIGHT RECORDER (Server)
--- =====================================
-
-local BlackBoxRecords = {}
-
-RegisterNetEvent('dps-airlines:server:saveBlackBox', function(data)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-
-    -- Store in memory (recent flights only)
-    BlackBoxRecords[data.flightNumber] = {
-        pilot = citizenid,
-        data = data,
-        savedAt = os.time()
-    }
-
-    -- Save summary to database
-    MySQL.insert.await([[
-        INSERT INTO airline_blackbox
-        (flight_number, pilot_citizenid, start_time, end_time, telemetry_count, events_count, data_summary)
-        VALUES (?, ?, FROM_UNIXTIME(?), FROM_UNIXTIME(?), ?, ?, ?)
-    ]], {
-        data.flightNumber,
-        citizenid,
-        math.floor(data.startTime / 1000),
-        math.floor(data.endTime / 1000),
-        #data.telemetry,
-        #data.events,
-        json.encode({
-            finalPosition = data.telemetry[#data.telemetry],
-            eventTypes = GetEventTypes(data.events)
-        })
-    })
-
-    if Config.Debug then
-        print(string.format('[dps-airlines] BlackBox saved for flight %s (%d points, %d events)',
-            data.flightNumber, #data.telemetry, #data.events))
-    end
-end)
-
-local function GetEventTypes(events)
-    local types = {}
-    for _, event in ipairs(events) do
-        types[event.type] = (types[event.type] or 0) + 1
-    end
-    return types
-end
-
-RegisterNetEvent('dps-airlines:server:flightCrashed', function(data)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    local citizenid = Player.PlayerData.citizenid
-    local flight = ActiveFlights[source]
-
-    -- Log crash
-    MySQL.insert.await([[
-        INSERT INTO airline_crashes
-        (flight_number, pilot_citizenid, crash_coords, crash_phase, flight_id, crash_time)
-        VALUES (?, ?, ?, ?, ?, NOW())
-    ]], {
-        data.flightNumber,
-        citizenid,
-        json.encode(data.coords),
-        data.phase,
-        flight and flight.id or nil
-    })
-
-    -- Update flight status
-    if flight then
-        MySQL.update.await('UPDATE airline_flights SET status = ?, completed_at = NOW() WHERE id = ?', {
-            'crashed',
-            flight.id
-        })
-    end
-
-    -- Update pilot stats (no rep penalty, just track crashes)
-    MySQL.update.await([[
-        UPDATE airline_pilot_stats
-        SET crashes = COALESCE(crashes, 0) + 1
-        WHERE citizenid = ?
-    ]], { citizenid })
-
-    Notify(source, 'Flight incident has been recorded', 'warning')
-
-    -- Clear active flight
-    ActiveFlights[source] = nil
-end)
-
-RegisterNetEvent('dps-airlines:server:requestRecoveryAircraft', function(data)
-    local source = source
-    local Player = GetPlayer(source)
-    if not Player then return end
-
-    -- Check if eligible for recovery (insurance check could go here)
-    local canRecover = true
-
-    if canRecover then
-        -- Notify client to spawn replacement
-        TriggerClientEvent('dps-airlines:client:recoveryApproved', source, {
-            destination = data.destination,
-            passengers = data.passengers,
-            cargo = data.cargo
-        })
-
-        Notify(source, 'Recovery aircraft approved. Head to the hangar.', 'success')
-    else
-        Notify(source, 'Recovery not available at this time', 'error')
-    end
-end)
-
-lib.callback.register('dps-airlines:server:getBlackBoxData', function(source, flightNumber)
-    if BlackBoxRecords[flightNumber] then
-        return BlackBoxRecords[flightNumber].data
-    end
-
-    -- Try to get from database
-    local record = MySQL.single.await([[
-        SELECT * FROM airline_blackbox WHERE flight_number = ?
-    ]], { flightNumber })
-
-    return record
-end)
-
-lib.callback.register('dps-airlines:server:getCrashHistory', function(source)
-    local Player = GetPlayer(source)
-    if not Player then return {} end
-
-    -- Bosses can see all, pilots see their own
-    local citizenid = Player.PlayerData.citizenid
-    local isBoss = Player.PlayerData.job.grade.level >= Config.BossGrade
-
-    local crashes
-    if isBoss then
-        crashes = MySQL.query.await([[
-            SELECT c.*, f.from_airport, f.to_airport, f.plane_model
-            FROM airline_crashes c
-            LEFT JOIN airline_flights f ON c.flight_id = f.id
-            ORDER BY c.crash_time DESC
-            LIMIT 20
-        ]])
-    else
-        crashes = MySQL.query.await([[
-            SELECT c.*, f.from_airport, f.to_airport, f.plane_model
-            FROM airline_crashes c
-            LEFT JOIN airline_flights f ON c.flight_id = f.id
-            WHERE c.pilot_citizenid = ?
-            ORDER BY c.crash_time DESC
-            LIMIT 10
-        ]], { citizenid })
-    end
-
-    return crashes or {}
-end)
-
--- Cleanup old blackbox records from memory periodically
-CreateThread(function()
-    while true do
-        Wait(300000) -- Every 5 minutes
-
-        local now = os.time()
-        local cleaned = 0
-
-        for flightNumber, record in pairs(BlackBoxRecords) do
-            -- Remove records older than 1 hour
-            if now - record.savedAt > 3600 then
-                BlackBoxRecords[flightNumber] = nil
-                cleaned = cleaned + 1
-            end
-        end
-
-        if cleaned > 0 and Config.Debug then
-            print('[dps-airlines] Cleaned ' .. cleaned .. ' old blackbox records from memory')
-        end
-    end
-end)
-
-print('^2[dps-airlines]^7 Server loaded')
