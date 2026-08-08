@@ -39,3 +39,9 @@ ui_page 'web/dist/index.html'
 files {
     'web/dist/**/*',
 }
+
+dependencies {
+    'ox_lib',
+    'oxmysql',
+    'ox_target',
+}
