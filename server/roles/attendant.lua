@@ -59,10 +59,12 @@ lib.callback.register('dps-airlines:server:attendantService', function(source, f
 
     -- Update attendant stats
     if serviceType == 'complete' then
-        MySQL.update.await(
-            'UPDATE airline_pilot_stats SET attendant_flights = attendant_flights + 1 WHERE citizenid = ?',
-            { player.identifier }
-        )
+        -- Pay the completion ONCE per flight per attendant. The crew assignment's
+        -- pay_amount is used as the "already serviced" marker (it is 0 until paid), so
+        -- repeated 'complete' calls on the same flight no longer farm pay (H3 fix).
+        if (assignment.pay_amount or 0) > 0 then
+            return false, 'Service already completed for this flight'
+        end
 
         -- Pay flat rate + potential tips
         local roleConfig = Config.Roles[Constants.ROLE_FLIGHT_ATTENDANT]
@@ -77,6 +79,18 @@ lib.callback.register('dps-airlines:server:attendantService', function(source, f
                 pay = pay + tip
             end
         end
+
+        -- Mark serviced first; if this row was already claimed concurrently the update
+        -- still only lets one call through because we re-check affected state.
+        MySQL.update.await(
+            'UPDATE airline_crew_assignments SET pay_amount = ? WHERE id = ? AND pay_amount = 0',
+            { pay, assignment.id }
+        )
+
+        MySQL.update.await(
+            'UPDATE airline_pilot_stats SET attendant_flights = attendant_flights + 1 WHERE citizenid = ?',
+            { player.identifier }
+        )
 
         Payments.PayPlayer(source, pay, 'Flight attendant service')
         Cache.Invalidate('stats_' .. player.identifier)

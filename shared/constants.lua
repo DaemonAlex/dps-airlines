@@ -133,6 +133,20 @@ Constants.HELI_TOUR         = 'tour'
 Constants.HELI_VIP          = 'vip_transport'
 Constants.HELI_SEARCH       = 'search_rescue'
 
+-- Helicopter op server-side hardening bounds
+Constants.HELI_MIN_OP_TIME    = 20      -- seconds an op must run before it can pay bonuses
+Constants.HELI_MAX_OP_TIME    = 3600    -- clamp for server-computed op duration
+Constants.HELI_DEST_RADIUS    = 200.0   -- how close (server position) the pilot must be to the destination pad
+Constants.TOUR_SEC_PER_WAYPOINT = 25    -- server credits 1 tour waypoint per this many elapsed seconds
+Constants.TOUR_MAX_WAYPOINTS    = 5     -- hard cap on tour waypoints credited
+
+-- Flight school hardening bounds
+Constants.SCHOOL_MAX_HOURS_PER_LOG = 1.0   -- max flight hours credited per practice session log
+Constants.SCHOOL_MAX_HOURS_TOTAL   = 100.0 -- hard cap on logged flight hours
+
+-- Cargo delivery hardening bounds
+Constants.CARGO_FLIGHT_MAX_AGE = 900    -- seconds; a flight must have completed this recently to claim a delivery
+
 -- Review ratings
 Constants.RATING_MIN = 1
 Constants.RATING_MAX = 5

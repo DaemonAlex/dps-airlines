@@ -111,22 +111,33 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
     })
     if not valid then return nil, validReason end
 
-    -- Calculate landing quality
-    local landingBonus, landingLabel = Payments.GetLandingBonus(data.landingSpeed or 10)
+    -- Landing quality is NOT server-verifiable at completion: by the time this callback
+    -- runs the aircraft has already touched down and is parked, so the touchdown vertical
+    -- speed is gone. The client-supplied landingSpeed is therefore no longer trusted and
+    -- the landing pay multiplier is dropped (neutral 1.0x) - see CHANGELOG H2.
+    local landingBonus, landingLabel = 1.0, 'Unrated'
 
-    -- Calculate pay
+    -- Night bonus is derived from the SERVER clock, not the client (H2 fix).
+    local serverHour = tonumber(os.date('%H'))
+    local isNight = serverHour ~= nil and (serverHour < 6 or serverHour >= 20)
+
+    -- No server-side weather feed exists, so weather is fixed to Clear (multiplier 1.0)
+    -- rather than trusting the client (which could declare "severe" for a ~1.5x payout).
+    local weatherSeverity = Constants.WEATHER_CLEAR
+
+    -- Calculate pay (all multipliers now server-sourced)
     local totalPay = Payments.CalculateFlightPay({
         distance = flight.distance,
         passengers = flight.passengers,
         cargoWeight = flight.cargo_weight,
-        weatherSeverity = data.weatherSeverity or Constants.WEATHER_CLEAR,
+        weatherSeverity = weatherSeverity,
         priority = flight.flight_type == 'priority',
-        isNight = data.isNight or false,
+        isNight = isNight,
         isEmergency = flight.flight_type == 'emergency',
         duration = data.duration,
     })
 
-    -- Apply landing bonus
+    -- Apply landing bonus (neutral - see above)
     totalPay = math.floor(totalPay * landingBonus)
 
     -- Update flight record
@@ -138,7 +149,7 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
         WHERE id = ?
     ]], {
         Constants.DB_STATUS_COMPLETED, data.duration or 0, data.fuelUsed or 0,
-        data.landingSpeed, landingLabel, data.weatherCondition or 'clear',
+        0, landingLabel, 'clear',
         totalPay, data.flightId
     })
 
@@ -187,9 +198,10 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
         totalPay, (data.duration or 0) / 3600.0, player.identifier
     })
 
-    -- Generate passenger review
+    -- Generate passenger review (cosmetic ratings only, never money). Landing quality
+    -- is not server-verifiable, so it uses a neutral baseline instead of client input.
     if Config.Reviews.enabled and flight.passengers > 0 then
-        local landingQuality = math.max(1, math.min(5, 5 - (math.abs(data.landingSpeed or 10) / 5)))
+        local landingQuality = 3.0
         local serviceQuality = 3 + math.random() * 2
         local timeQuality = data.duration and math.min(5, 3 + (1 - math.min(1, data.duration / (flight.distance / 30)))) or 3
         local overall = (landingQuality * Config.Reviews.landingWeight)

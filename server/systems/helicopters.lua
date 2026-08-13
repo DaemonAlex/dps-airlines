@@ -1,5 +1,46 @@
 -- Server: Helicopter operations (medevac, tour, VIP, search & rescue)
 
+-- Server-tracked state for every active operation, keyed by opId. This is the ONLY
+-- source of truth for op timing/completion - the client's `details` payload is ignored
+-- for anything that affects pay (C1 fix).
+local ActiveHeliOps = {}  -- [opId] = { startTime, opType, citizenid, source, destinationCode }
+
+---Server-side distance from a coordinate to the nearest helipad, optionally filtered
+---to pads that support a given operation type.
+---@param coords vector3
+---@param requiredType string|nil
+---@return number distance (math.huge if none found)
+local function NearestHelipadDist(coords, requiredType)
+    local best = math.huge
+    for _, pad in ipairs(Locations.Helipads) do
+        local matches = true
+        if requiredType then
+            matches = false
+            for _, t in ipairs(pad.types or {}) do
+                if t == requiredType then matches = true break end
+            end
+        end
+        if matches then
+            local d = #(coords - pad.coords)
+            if d < best then best = d end
+        end
+    end
+    return best
+end
+
+---Server-side distance from a coordinate to a specific helipad by code.
+---@param coords vector3
+---@param code string
+---@return number distance (math.huge if not found)
+local function HelipadDistByCode(coords, code)
+    for _, pad in ipairs(Locations.Helipads) do
+        if pad.code == code then
+            return #(coords - pad.coords)
+        end
+    end
+    return math.huge
+end
+
 -- Start helicopter operation
 lib.callback.register('dps-airlines:server:startHeliOp', function(source, data)
     local ok, reason = Validation.Check(source, {
@@ -33,6 +74,15 @@ lib.callback.register('dps-airlines:server:startHeliOp', function(source, data)
         data.destinationCode or '', Constants.DB_STATUS_ACTIVE
     })
 
+    -- Record the authoritative server start time / target for this op.
+    ActiveHeliOps[opId] = {
+        startTime = GetGameTimer(),
+        opType = data.opType,
+        citizenid = player.identifier,
+        source = source,
+        destinationCode = data.destinationCode,
+    }
+
     return {
         opId = opId,
         opType = data.opType,
@@ -57,8 +107,69 @@ lib.callback.register('dps-airlines:server:completeHeliOp', function(source, opI
     )
     if not op then return nil, 'Operation not found' end
 
-    local pay = Payments.CalculateHeliPay(op.operation_type, details or {})
-    local duration = details and details.duration or 0
+    -- Everything that affects pay is derived from SERVER state, never the client payload.
+    local state = ActiveHeliOps[opId]
+
+    -- Server-computed elapsed duration (monotonic game timer), clamped.
+    local duration = 0
+    if state then
+        duration = math.max(0, math.min((GetGameTimer() - state.startTime) / 1000.0, Constants.HELI_MAX_OP_TIME))
+    end
+
+    -- Server-sampled player position at completion.
+    local ped = GetPlayerPed(source)
+    local coords = (ped and ped > 0) and GetEntityCoords(ped) or nil
+
+    local opType = op.operation_type
+    local opKey = Payments.HeliOpConfigKey[opType]
+    local opCfg = opKey and Config.Helicopters[opKey] or {}
+
+    -- Build the bonus inputs entirely server-side.
+    local serverDetails = {}
+
+    if opType == Constants.HELI_MEDEVAC then
+        -- Bonus only if the pilot actually flew for a plausible time AND is at a
+        -- medevac-capable pad (the hospital) on completion.
+        local atHospital = coords and NearestHelipadDist(coords, Constants.HELI_MEDEVAC) <= Constants.HELI_DEST_RADIUS
+        if duration >= Constants.HELI_MIN_OP_TIME and atHospital then
+            local timeLimit = opCfg.timeLimit or 300
+            serverDetails.timeRemaining = math.max(0, timeLimit - duration)
+        else
+            serverDetails.timeRemaining = 0
+        end
+
+    elseif opType == Constants.HELI_TOUR then
+        -- Credit one waypoint per fixed slice of elapsed server time, hard-capped.
+        serverDetails.waypointsHit = math.min(
+            Constants.TOUR_MAX_WAYPOINTS,
+            math.floor(duration / Constants.TOUR_SEC_PER_WAYPOINT)
+        )
+
+    elseif opType == Constants.HELI_VIP then
+        -- Pays base rate only (see Payments.CalculateHeliPay); still require the pilot
+        -- to have actually reached the booked destination pad to be paid at all.
+        local atDest = op.destination_code and op.destination_code ~= ''
+            and coords and HelipadDistByCode(coords, op.destination_code) <= Constants.HELI_DEST_RADIUS
+        if not atDest or duration < Constants.HELI_MIN_OP_TIME then
+            -- Not a legitimate completion: close the op with no pay.
+            ActiveHeliOps[opId] = nil
+            MySQL.update.await([[
+                UPDATE airline_heli_ops SET status = ?, duration = ?, pay_amount = 0, completed_at = NOW()
+                WHERE id = ?
+            ]], { Constants.DB_STATUS_COMPLETED, math.floor(duration), opId })
+            return nil, 'Destination not reached'
+        end
+
+    elseif opType == Constants.HELI_SEARCH then
+        -- The search target is generated client-side and not knowable server-side, so
+        -- rescue credit is gated purely on a plausible elapsed time within the limit.
+        local timeLimit = opCfg.timeLimit or 600
+        serverDetails.rescued = (duration >= Constants.HELI_MIN_OP_TIME and duration <= timeLimit)
+    end
+
+    local pay = Payments.CalculateHeliPay(opType, serverDetails)
+
+    ActiveHeliOps[opId] = nil
 
     MySQL.update.await([[
         UPDATE airline_heli_ops SET
@@ -66,8 +177,8 @@ lib.callback.register('dps-airlines:server:completeHeliOp', function(source, opI
             details = ?
         WHERE id = ?
     ]], {
-        Constants.DB_STATUS_COMPLETED, duration, pay,
-        json.encode(details or {}), opId
+        Constants.DB_STATUS_COMPLETED, math.floor(duration), pay,
+        json.encode(serverDetails), opId
     })
 
     Payments.PayPlayer(source, pay, 'Helicopter operation: ' .. op.operation_type)
@@ -122,4 +233,14 @@ lib.callback.register('dps-airlines:server:spawnHelicopter', function(source, mo
     end
 
     return nil, 'Helipad not found'
+end)
+
+-- Drop any tracked heli-op state for a player who disconnects mid-operation.
+AddEventHandler('playerDropped', function()
+    local src = source
+    for opId, state in pairs(ActiveHeliOps) do
+        if state.source == src then
+            ActiveHeliOps[opId] = nil
+        end
+    end
 end)

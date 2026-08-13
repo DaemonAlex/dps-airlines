@@ -4,7 +4,7 @@ game 'gta5'
 name 'dps-airlines'
 author 'DPS Scripts'
 description 'Full airline job system with multi-framework support'
-version '3.0.0'
+version '3.1.0'
 
 lua54 'yes'
 

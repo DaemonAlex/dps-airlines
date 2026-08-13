@@ -107,39 +107,44 @@ function TakeLesson()
     end
 end
 
----Start a practice flight (logs hours)
+---Start a practice flight (server tracks the time; hours are credited server-side)
 function StartPracticeFlight()
-    Bridge.Notify('Practice flight started! Fly around to log hours.', 'inform')
-
-    local startTime = GetGameTimer()
-
-    -- Monitor practice flight
-    CreateThread(function()
-        while true do
-            Wait(60000) -- Log every minute
-            local ped = PlayerPedId()
-            local vehicle = GetVehiclePedIsIn(ped, false)
-
-            if vehicle == 0 or not IsThisModelAPlane(GetEntityModel(vehicle)) then
-                local elapsed = (GetGameTimer() - startTime) / 3600000.0 -- hours
-                if elapsed > 0.01 then
-                    lib.callback('dps-airlines:server:logSchoolHours', false, function(ok)
-                        if ok then
-                            Bridge.Notify(string.format('Logged %.2f practice hours', elapsed), 'success')
-                        end
-                    end, elapsed)
-                end
-                return
-            end
+    lib.callback('dps-airlines:server:startPracticeFlight', false, function(ok, err)
+        if not ok then
+            Bridge.Notify(err or 'Could not start practice flight', 'error')
+            return
         end
+
+        Bridge.Notify('Practice flight started! Fly around to log hours.', 'inform')
+
+        -- Monitor practice flight; when the player leaves the plane, ask the server to
+        -- credit hours. The server computes the amount from its own recorded start time,
+        -- so no hours value is sent from here.
+        CreateThread(function()
+            while true do
+                Wait(60000) -- check every minute
+                local ped = PlayerPedId()
+                local vehicle = GetVehiclePedIsIn(ped, false)
+
+                if vehicle == 0 or not IsThisModelAPlane(GetEntityModel(vehicle)) then
+                    lib.callback('dps-airlines:server:logSchoolHours', false, function(logged)
+                        if logged then
+                            Bridge.Notify('Practice hours logged', 'success')
+                        end
+                    end)
+                    return
+                end
+            end
+        end)
     end)
 end
 
----Start checkride
+---Start checkride. The candidate must actually fly a server-assigned route; the
+---pass/fail result is decided server-side from that flight (no client pass flag).
 function StartCheckride()
     local confirm = lib.alertDialog({
         header = 'Checkride',
-        content = string.format('Take the checkride exam? Fee: $%d\n\nYou will need to demonstrate:\n- Proper takeoff\n- Level cruise\n- Smooth landing',
+        content = string.format('Take the checkride exam? Fee: $%d\n\nYou will be assigned a route to fly. Reach the destination airport to complete the checkride. Your flight is graded on the server.',
             Config.FlightSchool.checkrideFee),
         centered = true,
         cancel = true,
@@ -147,36 +152,41 @@ function StartCheckride()
 
     if confirm ~= 'confirm' then return end
 
-    -- Simulate checkride (simplified - could be expanded to actual flight test)
-    local steps = {
-        { label = 'Written Exam', duration = 10000 },
-        { label = 'Oral Examination', duration = 8000 },
-        { label = 'Pre-Flight Check', duration = 5000 },
-    }
-
-    for _, step in ipairs(steps) do
-        local success = lib.progressBar({
-            duration = step.duration,
-            label = step.label,
-            useWhileDead = false,
-            canCancel = true,
-        })
-        if not success then
-            Bridge.Notify('Checkride interrupted', 'error')
+    lib.callback('dps-airlines:server:startCheckride', false, function(route, err)
+        if not route then
+            Bridge.Notify(err or 'Could not start checkride', 'error')
             return
         end
-    end
 
-    -- 80% pass rate
-    local passed = math.random(100) <= 80
+        Bridge.Notify(string.format('Checkride started! Fly from %s to %s (%s).',
+            route.departure, route.arrival, route.arrivalLabel), 'inform', 10000)
 
-    lib.callback('dps-airlines:server:attemptCheckride', false, function(success)
-        if success then
-            if passed then
-                Bridge.Notify('Congratulations! You passed the checkride! Pilot license granted!', 'success', 10000)
-            else
-                Bridge.Notify('Checkride failed. Study more and try again.', 'error', 5000)
-            end
+        if route.arrivalCoords then
+            SetNewWaypoint(route.arrivalCoords.x, route.arrivalCoords.y)
         end
-    end, passed)
+
+        local destAirport = Locations.GetAirport(route.arrival)
+
+        -- Monitor arrival, then let the server grade the flight.
+        CreateThread(function()
+            while true do
+                Wait(2000)
+                local coords = GetEntityCoords(PlayerPedId())
+                local dist = destAirport and #(coords - destAirport.coords) or 9999.0
+
+                if dist < Constants.DIST_COMPLETION then
+                    lib.callback('dps-airlines:server:attemptCheckride', false, function(handled, passed)
+                        if handled then
+                            if passed then
+                                Bridge.Notify('Congratulations! You passed the checkride! Pilot license granted!', 'success', 10000)
+                            else
+                                Bridge.Notify('Checkride failed. Fly the assigned route properly and try again.', 'error', 7000)
+                            end
+                        end
+                    end)
+                    return
+                end
+            end
+        end)
+    end)
 end

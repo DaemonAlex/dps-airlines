@@ -41,12 +41,16 @@ function Payments.CalculateFlightPay(flightData)
     return math.floor(pay)
 end
 
----Distribute crew pay based on role multipliers
+---Distribute crew pay based on role multipliers.
+---The total disbursed across all crew is capped at `totalPay`; if the sum of the
+---computed shares exceeds the flight pay, every share is scaled down proportionally
+---so the company never mints more than it earned for the flight (M2 fix).
 ---@param totalPay number
 ---@param crewMembers table[] { source, role }
 ---@return table[] { source, role, amount }
 function Payments.DistributeCrewPay(totalPay, crewMembers)
     local payouts = {}
+    local sum = 0
 
     for _, member in ipairs(crewMembers) do
         local roleConfig = Config.Roles[member.role]
@@ -65,12 +69,21 @@ function Payments.DistributeCrewPay(totalPay, crewMembers)
                 amount = math.floor(totalPay * (roleConfig.commissionPercent or 0.05))
             end
 
+            sum = sum + amount
             payouts[#payouts + 1] = {
                 source = member.source,
                 citizenid = member.citizenid,
                 role = member.role,
                 amount = amount,
             }
+        end
+    end
+
+    -- Cap total crew disbursement to the flight's computed pay. Scale shares to fit.
+    if totalPay > 0 and sum > totalPay then
+        local scale = totalPay / sum
+        for _, payout in ipairs(payouts) do
+            payout.amount = math.floor(payout.amount * scale)
         end
     end
 
@@ -127,35 +140,50 @@ function Payments.CalculateDispatcherSalary()
     return roleConfig and roleConfig.salaryPerCycle or 200
 end
 
----Calculate helicopter operation pay
+-- Map operation type identifiers to their Config.Helicopters keys.
+-- (The opType constants are 'vip_transport'/'search_rescue' but the config keys
+-- are 'vip'/'searchRescue' - without this map those ops silently paid $0.)
+Payments.HeliOpConfigKey = {
+    [Constants.HELI_MEDEVAC] = 'medevac',
+    [Constants.HELI_TOUR]    = 'tour',
+    [Constants.HELI_VIP]     = 'vip',
+    [Constants.HELI_SEARCH]  = 'searchRescue',
+}
+
+---Calculate helicopter operation pay.
+---IMPORTANT: `details` here is built ENTIRELY server-side by the completeHeliOp
+---callback (timeRemaining from the server clock, waypoints from elapsed server time,
+---rescued/near-destination from the server-sampled player position). Never pass raw
+---client input to this function. Bonus inputs are additionally clamped here as
+---defence-in-depth so no single value can inflate the payout (C1 fix).
 ---@param opType string
----@param details table { timeRemaining?, waypointsHit?, landingSmooth?, minutesLate? }
+---@param details table { timeRemaining?, waypointsHit?, rescued? } - server-derived only
 ---@return number
 function Payments.CalculateHeliPay(opType, details)
     local cfg = Config.Helicopters
-    if not cfg or not cfg[opType] then return 0 end
-    local opCfg = cfg[opType]
+    if not cfg then return 0 end
+    local key = Payments.HeliOpConfigKey[opType]
+    local opCfg = key and cfg[key]
+    if not opCfg then return 0 end
 
+    details = details or {}
     local pay = opCfg.basePay or 0
 
-    if opType == 'medevac' then
-        local timeSaved = (details.timeRemaining or 0)
+    if opType == Constants.HELI_MEDEVAC then
+        local maxT = opCfg.timeLimit or 300
+        local timeSaved = math.max(0, math.min(details.timeRemaining or 0, maxT))
         pay = pay + (timeSaved * (opCfg.bonusPerSecondSaved or 5))
 
-    elseif opType == 'tour' then
-        local waypoints = details.waypointsHit or 0
+    elseif opType == Constants.HELI_TOUR then
+        local waypoints = math.max(0, math.min(details.waypointsHit or 0, Constants.TOUR_MAX_WAYPOINTS))
         pay = pay + (waypoints * (opCfg.waypointBonus or 50))
 
-    elseif opType == 'vip_transport' then
-        if details.landingSmooth then
-            pay = pay + (opCfg.landingBonusSmooth or 500)
-        end
-        local minutesLate = details.minutesLate or 0
-        if minutesLate > 0 then
-            pay = pay - (minutesLate * (opCfg.latePenaltyPerMinute or 50))
-        end
+    elseif opType == Constants.HELI_VIP then
+        -- Landing smoothness / lateness are not verifiable server-side at completion
+        -- (the aircraft is already parked), so no touchdown bonus/penalty is applied.
+        -- VIP transport pays its flat base rate only.
 
-    elseif opType == 'search_rescue' then
+    elseif opType == Constants.HELI_SEARCH then
         if details.rescued then
             pay = pay + (opCfg.rescueBonus or 300)
         end

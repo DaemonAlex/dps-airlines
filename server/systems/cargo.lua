@@ -1,5 +1,10 @@
 -- Server: Cargo system & cargo contracts
 
+-- Flights already consumed to claim a cargo delivery. A single completed flight can
+-- only credit ONE delivery, which (together with the recency + ownership checks below)
+-- stops the "pay every 5s with no flight" money printer (H1 fix).
+local ClaimedCargoFlights = {}  -- [flightId] = true
+
 -- Get available cargo contracts
 lib.callback.register('dps-airlines:server:getCargoContracts', function(source)
     local ok = Validation.Check(source, { employee = true, onDuty = true })
@@ -66,6 +71,46 @@ lib.callback.register('dps-airlines:server:completeCargoDelivery', function(sour
         { contractId, player.identifier, Constants.DB_STATUS_ACTIVE }
     )
     if not contract then return false, 'Contract not found' end
+
+    -- A delivery must be backed by a real, recently-completed cargo flight flown by
+    -- this player. flightId is required and validated against airline_flights - it can
+    -- no longer be spammed with a bogus/absent id (H1 fix).
+    flightId = tonumber(flightId)
+    if not flightId then return false, 'No delivery flight provided' end
+
+    if ClaimedCargoFlights[flightId] then
+        return false, 'This flight has already been credited'
+    end
+
+    local flight = MySQL.single.await([[
+        SELECT id, cargo_weight, arrival_airport, arrival_time,
+               TIMESTAMPDIFF(SECOND, arrival_time, NOW()) AS age_seconds
+        FROM airline_flights
+        WHERE id = ? AND pilot_citizenid = ? AND status = ?
+    ]], { flightId, player.identifier, Constants.DB_STATUS_COMPLETED })
+
+    if not flight then return false, 'No completed flight found for this delivery' end
+    if (flight.cargo_weight or 0) < (contract.weight_per_delivery or 0) then
+        return false, 'Flight did not carry enough cargo for this contract'
+    end
+    if flight.age_seconds == nil or flight.age_seconds > Constants.CARGO_FLIGHT_MAX_AGE then
+        return false, 'Delivery flight is too old'
+    end
+
+    -- Belt-and-braces: confirm the player is actually at the flight's destination airport.
+    local ped = GetPlayerPed(source)
+    if ped and ped > 0 then
+        local destAirport = Locations.GetAirport(flight.arrival_airport)
+        if destAirport then
+            local dist = #(GetEntityCoords(ped) - destAirport.coords)
+            if dist > Constants.DIST_APPROACH_DETECT then
+                return false, 'Not at the delivery destination'
+            end
+        end
+    end
+
+    -- Consume this flight so it cannot credit a second delivery.
+    ClaimedCargoFlights[flightId] = true
 
     -- Increment completed deliveries
     local newCompleted = contract.completed_deliveries + 1

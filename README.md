@@ -36,10 +36,21 @@ A comprehensive airlines job system for FiveM servers with **multi-framework sup
 ### Technical
 - **Multi-Framework Bridge** - Auto-detects QBCore, Qbox, or ESX
 - **React TypeScript NUI** - Modern UI with dark theme, pre-built and ready to use
-- **Server-Side Security** - All payments calculated server-side, anti-cheat validation
+- **Server-Side Security** - Payouts are calculated and validated server-side from authoritative state (server clock, server-sampled position, server-tracked op/flight timers); bonus magnitudes and pass/fail outcomes are never taken from the client. See the payout-hardening notes below.
 - **Rate Limiting** - Per-player cooldowns on all actions
 - **Input Validation** - Airport codes, passenger counts, cargo weights all validated
 - **TTL Cache** - Optimized database queries with configurable cache
+
+### Payout hardening (v3.1.0)
+
+Several payouts previously trusted client-supplied values. As of v3.1.0 every payout is derived from authoritative server state:
+
+- **Helicopter ops** - op start time and target are tracked server-side; time bonuses come from the server clock, tour waypoints from elapsed server time, and rescue/arrival credit from the server-sampled player position. All bonus inputs are clamped. (This also fixes a latent bug where VIP/search ops paid $0 due to an op-type/config-key mismatch.)
+- **Passenger flights** - `isNight` comes from the server clock and weather is fixed to Clear (no server weather feed). The landing multiplier is dropped because touchdown vertical speed is not knowable server-side after the aircraft has parked; the distance-based minimum-flight-time and near-destination anti-cheat checks remain.
+- **Cargo deliveries** - a delivery must be backed by a real, recently-completed cargo flight flown by the claimant; each flight can credit at most one delivery.
+- **Flight school** - practice hours are credited from a server-tracked timer, and the checkride pass/fail is decided server-side from an actually-flown, validated route (the old client "passed" flag is gone).
+- **Flight attendant** - completion pay is granted once per flight per attendant.
+- **Crew distribution** - total crew disbursement is capped at the flight's computed pay.
 
 ## Dependencies
 
