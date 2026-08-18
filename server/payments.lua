@@ -54,7 +54,10 @@ function Payments.DistributeCrewPay(totalPay, crewMembers)
 
     for _, member in ipairs(crewMembers) do
         local roleConfig = Config.Roles[member.role]
-        if roleConfig then
+        -- Skip anyone already paid for this flight. Flight attendants collect via
+        -- attendantService (which stamps pay_amount on the crew row) and were then
+        -- paid the flat rate AGAIN here at completion - double pay per flight.
+        if roleConfig and (tonumber(member.pay_amount) or 0) == 0 then
             local amount = 0
 
             if member.role == Constants.ROLE_CAPTAIN or member.role == Constants.ROLE_CHIEF_PILOT then

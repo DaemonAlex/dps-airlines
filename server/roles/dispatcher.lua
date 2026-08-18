@@ -80,10 +80,18 @@ lib.callback.register('dps-airlines:server:assignPilot', function(source, schedu
         return false, 'Target employee cannot fly'
     end
 
-    MySQL.update.await(
+    -- Only pay commission when THIS call actually transitioned a pending schedule.
+    -- The result was previously ignored, so re-assigning the same schedule paid
+    -- commission again every time (rate limit was the only ceiling) - an unbounded
+    -- money printer off a single free schedule.
+    local assigned = MySQL.update.await(
         'UPDATE airline_dispatch_schedules SET assigned_pilot = ?, status = ? WHERE id = ? AND status = ?',
         { pilotCitizenId, Constants.DISPATCH_ASSIGNED, scheduleId, Constants.DISPATCH_PENDING }
     )
+
+    if not assigned or assigned == 0 then
+        return false, 'That schedule is no longer pending'
+    end
 
     -- Notify pilot if online
     local pilotPlayer = Bridge.GetPlayerByIdentifier(pilotCitizenId)

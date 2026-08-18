@@ -28,11 +28,27 @@ lib.callback.register('dps-airlines:server:joinFlightCopilot', function(source, 
         return false, 'Cannot copilot your own flight'
     end
 
-    -- Update flight with copilot
-    MySQL.update.await(
-        'UPDATE airline_flights SET copilot_citizenid = ? WHERE id = ?',
+    -- Must actually be with the flight. Any on-duty First Officer could previously
+    -- attach to ANY active flight by id from anywhere on the map and collect the
+    -- copilot share of the pay at completion - pay theft from the captain.
+    local captain = Bridge.GetPlayerByIdentifier(flight.pilot_citizenid)
+    if not captain then
+        return false, 'The captain is not online'
+    end
+    local myPed, capPed = GetPlayerPed(source), GetPlayerPed(captain.source)
+    if myPed == 0 or capPed == 0 then return false, 'Cannot verify your position' end
+    if #(GetEntityCoords(myPed) - GetEntityCoords(capPed)) > (Config.MaxCrewJoinDistance or 50.0) then
+        return false, 'You must be at the aircraft to join the crew'
+    end
+
+    -- Claim the copilot seat only if it is still free
+    local claimed = MySQL.update.await(
+        'UPDATE airline_flights SET copilot_citizenid = ? WHERE id = ? AND copilot_citizenid IS NULL',
         { player.identifier, flightId }
     )
+    if not claimed or claimed == 0 then
+        return false, 'Flight already has a copilot'
+    end
 
     -- Add crew assignment
     MySQL.insert.await(
