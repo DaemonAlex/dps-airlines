@@ -3,15 +3,20 @@
 -- Pilot progression (2026-08-26): rank computed from lifetime stats already
 -- tracked in airline_pilot_stats; thresholds live in Config.PilotRanks.
 local function GetPilotRank(citizenid)
-    -- delegates to the cached shared resolver in main.lua (single source of truth)
-    return GetPilotRankShared(citizenid)
+    local s = MySQL.single.await(
+        'SELECT flight_hours, successful_flights FROM airline_pilot_stats WHERE citizenid = ?',
+        { citizenid })
+    return Config.GetRankForStats(s and s.flight_hours or 0, s and s.successful_flights or 0)
 end
 
 -- Client UI asks for its own rank (menu locks, preview badges)
 lib.callback.register('dps-airlines:server:getPilotRank', function(source)
     local player = Bridge.GetPlayer(source)
     if not player then return nil end
-    local r, s = GetPilotRankShared(player.identifier)
+    local s = MySQL.single.await(
+        'SELECT flight_hours, successful_flights FROM airline_pilot_stats WHERE citizenid = ?',
+        { player.identifier })
+    local r = Config.GetRankForStats(s and s.flight_hours or 0, s and s.successful_flights or 0)
     return { rank = r.rank, name = r.name, payMultiplier = r.payMultiplier,
              hours = s and s.flight_hours or 0, flights = s and s.successful_flights or 0 }
 end)
@@ -197,9 +202,6 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
                 source = crewPlayer.source,
                 citizenid = crew.citizenid,
                 role = crew.role,
-                -- carry the already-paid amount so DistributeCrewPay's double-pay
-                -- guard (payments.lua) can skip attendants paid via attendantService
-                pay_amount = crew.pay_amount,
             }
         end
     end
@@ -211,13 +213,6 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
             Payments.PayPlayer(payout.source, payout.amount, 'Flight ' .. flight.flight_number .. ' completion')
         end
     end
-
-    -- Flight hours are credited from the SERVER-KNOWN distance at a reference
-    -- cruise speed, NOT from client data.duration (which is uncapped and would
-    -- let a pilot bank arbitrary hours per flight to reach rank/pay tiers).
-    -- Same server-sourced philosophy as the night/weather/landing multipliers.
-    local REFERENCE_CRUISE_MPS = 180.0  -- ~650 km/h, mid of the fleet
-    local creditedHours = math.min(6.0, (flight.distance or 0) / REFERENCE_CRUISE_MPS / 3600.0)
 
     -- Update pilot stats
     MySQL.update.await([[
@@ -232,7 +227,7 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
         WHERE citizenid = ?
     ]], {
         flight.passengers, flight.cargo_weight, flight.distance,
-        totalPay, creditedHours, player.identifier
+        totalPay, (data.duration or 0) / 3600.0, player.identifier
     })
 
     -- Generate passenger review (cosmetic ratings only, never money). Landing quality

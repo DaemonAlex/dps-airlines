@@ -2,16 +2,16 @@
 
 /* Coastal-dusk palette tokens (house theme) */
 :root {
-  --cd-night: #0a0d18;
-  --cd-deep: #0f1424;
-  --cd-panel: #151b30;
-  --cd-raised: #1b2340;
-  --cd-border: #26304d;
+  --cd-night: #0c0e16;
+  --cd-deep: #111522;
+  --cd-panel: #171d2e;
+  --cd-raised: #1f263c;
+  --cd-border: #27304c;
   --cd-ink: #f4f1ea;
   --cd-dim: #aeb6d2;
   --cd-sun: #ff7a45;
   --cd-sun2: #ffab6b;
-  --cd-sun-dim: #2a1206;
+  --cd-sun-dim: #101420;
   --cd-sea: #4ec9b0;
   --cd-cool: #5bc8e8;
   --cd-ok: #4ec98a;
@@ -49,7 +49,7 @@ body {
   max-width: 1200px;
   height: 80vh;
   max-height: 800px;
-  background: linear-gradient(135deg, #0f1424 0%, #151b30 100%);
+  background: linear-gradient(135deg, #111522 0%, #171d2e 100%);
   border-radius: 16px;
   border: 1px solid rgba(255, 122, 69, 0.3);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
@@ -158,8 +158,8 @@ body {
 
 /* Cards */
 .card {
-  background: #1b2340;
-  border: 1px solid #26304d;
+  background: #1f263c;
+  border: 1px solid #27304c;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
@@ -194,8 +194,8 @@ body {
 }
 
 .stat-card {
-  background: #1b2340;
-  border: 1px solid #26304d;
+  background: #1f263c;
+  border: 1px solid #27304c;
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -235,13 +235,13 @@ body {
   color: #aeb6d2;
   text-transform: uppercase;
   letter-spacing: 1px;
-  border-bottom: 1px solid #26304d;
+  border-bottom: 1px solid #27304c;
 }
 
 .data-table td {
   padding: 10px 12px;
   font-size: 14px;
-  border-bottom: 1px solid #26304d;
+  border-bottom: 1px solid #27304c;
 }
 
 .data-table tr:hover td {
@@ -279,7 +279,7 @@ body {
 }
 
 .badge-default {
-  background: #1b2340;
+  background: #1f263c;
   color: #aeb6d2;
 }
 
@@ -291,8 +291,8 @@ body {
 }
 
 .aircraft-card {
-  background: #1b2340;
-  border: 1px solid #26304d;
+  background: #1f263c;
+  border: 1px solid #27304c;
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -331,7 +331,7 @@ body {
   height: 400px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
-  border: 1px solid #26304d;
+  border: 1px solid #27304c;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -412,7 +412,7 @@ body {
 
 .page-btn {
   padding: 6px 12px;
-  border: 1px solid #26304d;
+  border: 1px solid #27304c;
   background: transparent;
   color: #aeb6d2;
   border-radius: 6px;
@@ -436,7 +436,7 @@ body {
 .fuel-bar-wrapper {
   padding: 8px 20px;
   background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid #26304d;
+  border-top: 1px solid #27304c;
 }
 
 .fuel-bar {
@@ -448,7 +448,7 @@ body {
   justify-content: center;
   font-size: 12px;
   font-weight: 600;
-  color: #0f1424;
+  color: #111522;
   transition: width 0.5s;
   min-width: 60px;
 }
@@ -461,8 +461,8 @@ body {
 }
 
 .crew-card {
-  background: #1b2340;
-  border: 1px solid #26304d;
+  background: #1f263c;
+  border: 1px solid #27304c;
   border-radius: 12px;
   padding: 16px;
   display: flex;

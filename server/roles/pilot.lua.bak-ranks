@@ -1,21 +1,5 @@
 -- Server: Captain & Chief Pilot role logic
 
--- Pilot progression (2026-08-26): rank computed from lifetime stats already
--- tracked in airline_pilot_stats; thresholds live in Config.PilotRanks.
-local function GetPilotRank(citizenid)
-    -- delegates to the cached shared resolver in main.lua (single source of truth)
-    return GetPilotRankShared(citizenid)
-end
-
--- Client UI asks for its own rank (menu locks, preview badges)
-lib.callback.register('dps-airlines:server:getPilotRank', function(source)
-    local player = Bridge.GetPlayer(source)
-    if not player then return nil end
-    local r, s = GetPilotRankShared(player.identifier)
-    return { rank = r.rank, name = r.name, payMultiplier = r.payMultiplier,
-             hours = s and s.flight_hours or 0, flights = s and s.successful_flights or 0 }
-end)
-
 -- Start a flight
 lib.callback.register('dps-airlines:server:startFlight', function(source, data)
     local ok, reason = Validation.Check(source, {
@@ -38,13 +22,6 @@ lib.callback.register('dps-airlines:server:startFlight', function(source, data)
 
     local player = Bridge.GetPlayer(source)
     if not player then return nil end
-
-    -- Rank gate: bigger aircraft need higher pilot rank
-    local pilotRank = GetPilotRank(player.identifier)
-    if (aircraft.minRank or 1) > pilotRank.rank then
-        local need = Config.PilotRanks[aircraft.minRank or 1]
-        return nil, ('Requires %s — you are %s'):format(need and need.name or 'a higher rank', pilotRank.name)
-    end
 
     -- Check maintenance status
     local maint = MySQL.single.await(
@@ -163,10 +140,6 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
     -- Apply landing bonus (neutral - see above)
     totalPay = math.floor(totalPay * landingBonus)
 
-    -- Captain's rank scales the whole crew pot (Config.PilotRanks.payMultiplier)
-    local captainRank = GetPilotRank(flight.pilot_citizenid)
-    totalPay = math.floor(totalPay * (captainRank.payMultiplier or 1.0))
-
     -- Update flight record
     MySQL.update.await([[
         UPDATE airline_flights SET
@@ -197,9 +170,6 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
                 source = crewPlayer.source,
                 citizenid = crew.citizenid,
                 role = crew.role,
-                -- carry the already-paid amount so DistributeCrewPay's double-pay
-                -- guard (payments.lua) can skip attendants paid via attendantService
-                pay_amount = crew.pay_amount,
             }
         end
     end
@@ -211,13 +181,6 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
             Payments.PayPlayer(payout.source, payout.amount, 'Flight ' .. flight.flight_number .. ' completion')
         end
     end
-
-    -- Flight hours are credited from the SERVER-KNOWN distance at a reference
-    -- cruise speed, NOT from client data.duration (which is uncapped and would
-    -- let a pilot bank arbitrary hours per flight to reach rank/pay tiers).
-    -- Same server-sourced philosophy as the night/weather/landing multipliers.
-    local REFERENCE_CRUISE_MPS = 180.0  -- ~650 km/h, mid of the fleet
-    local creditedHours = math.min(6.0, (flight.distance or 0) / REFERENCE_CRUISE_MPS / 3600.0)
 
     -- Update pilot stats
     MySQL.update.await([[
@@ -232,7 +195,7 @@ lib.callback.register('dps-airlines:server:completeFlight', function(source, dat
         WHERE citizenid = ?
     ]], {
         flight.passengers, flight.cargo_weight, flight.distance,
-        totalPay, creditedHours, player.identifier
+        totalPay, (data.duration or 0) / 3600.0, player.identifier
     })
 
     -- Generate passenger review (cosmetic ratings only, never money). Landing quality
@@ -361,14 +324,6 @@ lib.callback.register('dps-airlines:server:spawnAircraft', function(source, mode
 
     local aircraft = Locations.GetAircraftConfig(model)
     if not aircraft then return nil, 'Invalid aircraft' end
-
-    local sp = Bridge.GetPlayer(source)
-    if not sp then return nil end
-    local spRank = GetPilotRank(sp.identifier)
-    if (aircraft.minRank or 1) > spRank.rank then
-        local need = Config.PilotRanks[aircraft.minRank or 1]
-        return nil, ('Requires %s — you are %s'):format(need and need.name or 'a higher rank', spRank.name)
-    end
 
     local airport = Locations.GetAirport(airportCode)
     if not airport then return nil, 'Invalid airport' end

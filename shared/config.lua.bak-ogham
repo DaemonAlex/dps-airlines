@@ -149,11 +149,9 @@ Config.Aircraft = {
     { model = 'emb120',    label = 'Embraer EMB-120', passengers = 30,  cargo = 700,  fuelRate = 0.8, class = 'prop',   minRank = 1 },
     -- rank 2 - First Officer: small regional
     { model = 'ha420',     label = 'HondaJet HA-420', passengers = 6,   cargo = 300,  fuelRate = 0.8, class = 'small',  minRank = 2 },
-    { model = 'ogham',     label = 'Buckingham Ogham', passengers = 8,  cargo = 400,  fuelRate = 0.9, class = 'small',  minRank = 2 },
     { model = 'atr72',     label = 'ATR 72',          passengers = 70,  cargo = 1500, fuelRate = 1.0, class = 'medium', minRank = 2 },
     { model = 'saab2000',  label = 'Saab 2000',       passengers = 50,  cargo = 1200, fuelRate = 0.9, class = 'medium', minRank = 2 },
     { model = 'emb145',    label = 'Embraer ERJ-145', passengers = 50,  cargo = 1200, fuelRate = 1.0, class = 'medium', minRank = 2 },
-    { model = 'e145',      label = 'Embraer ERJ-145 (Interior)', passengers = 50, cargo = 1200, fuelRate = 1.0, class = 'medium', minRank = 2 },
     { model = '8q400',     label = 'Dash 8 Q400',     passengers = 78,  cargo = 1600, fuelRate = 1.0, class = 'medium', minRank = 2 },
     { model = 'bac',       label = 'BAC One-Eleven',  passengers = 80,  cargo = 1800, fuelRate = 1.4, class = 'medium', minRank = 2 },
     -- rank 3 - Captain: classic narrow-bodies

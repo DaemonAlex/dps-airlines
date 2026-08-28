@@ -129,7 +129,7 @@ function OpenFlightSetup(airportCode)
     local input = lib.inputDialog('Flight Setup', {
         { type = 'select', label = 'Aircraft', options = aircraftOptions, required = true },
         { type = 'select', label = 'Destination', options = destOptions, required = true },
-        { type = 'number', label = 'Passengers', min = 0, max = 300, default = 0 }, -- fleet max (A350); server enforces per-aircraft limit
+        { type = 'number', label = 'Passengers', min = 0, max = 200, default = 0 },
         { type = 'number', label = 'Cargo Weight (kg)', min = 0, max = 10000, default = 0 },
         { type = 'select', label = 'Flight Type', options = {
             { label = 'Scheduled', value = 'scheduled' },
@@ -184,22 +184,13 @@ function SpawnFlightAircraft(model, airportCode, flightData)
         end
 
         local hash = joaat(spawnData.model)
-        -- Guard the addon model load: the server already created the ACTIVE flight,
-        -- so a missing/renamed addon must fail that flight instead of orphaning it.
-        if not lib.requestModel(hash, 15000) then
-            Bridge.Notify('Aircraft model failed to load - flight cancelled', 'error')
-            if flightData and flightData.flightId then
-                lib.callback.await('dps-airlines:server:failFlight', false, flightData.flightId, 'model_load_failed')
-            end
-            return
-        end
+        lib.requestModel(hash)
 
         local coords = spawnData.coords
         local vehicle = CreateVehicle(hash, coords.x, coords.y, coords.z, spawnData.heading, true, false)
 
         SetVehicleOnGroundProperly(vehicle)
         SetVehicleEngineOn(vehicle, false, true, false)
-        if ApplyAircraftInterior then ApplyAircraftInterior(vehicle) end  -- fit cabin/cockpit interior
         SetModelAsNoLongerNeeded(hash)
 
         State.CurrentPlane = vehicle
@@ -241,7 +232,7 @@ function OpenCharterMenu(airportCode)
     local input = lib.inputDialog('Charter Flight', {
         { type = 'select', label = 'Destination', options = destOptions, required = true },
         { type = 'select', label = 'Aircraft', options = aircraftOptions, required = true },
-        { type = 'number', label = 'Passengers', min = 1, max = 300, default = 1 }, -- fleet max; server enforces per-aircraft limit
+        { type = 'number', label = 'Passengers', min = 1, max = 200, default = 1 },
         { type = 'checkbox', label = 'VIP Service' },
         { type = 'number', label = 'Luggage Pieces', min = 0, max = 50, default = 0 },
     })
@@ -367,7 +358,6 @@ local function PreviewAircraft(model, airportCode)
     previewVeh = CreateVehicle(hash, s.x, s.y, s.z, s.w or 0.0, false, false)
     SetEntityAlpha(previewVeh, 210, false)
     FreezeEntityPosition(previewVeh, true)
-    SetEntityCollision(previewVeh, false, false)  -- ghost: real flights spawn on the same pad
     SetVehicleDoorsLocked(previewVeh, 2)
     SetModelAsNoLongerNeeded(hash)
     previewCam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
@@ -397,14 +387,13 @@ function OpenAircraftPreview(airportCode)
         local locked = minRank > myRank.rank
         local needName = Config.PilotRanks[minRank] and Config.PilotRanks[minRank].name or ('rank ' .. minRank)
         opts[#opts + 1] = {
-            title = (locked and '[LOCKED] ' or '') .. ac.label,
+            title = (locked and 'ð ' or '') .. ac.label,
             description = ('%s | %d pax | %s'):format(ac.class, ac.passengers or 0,
                 locked and ('requires ' .. needName) or ('flyable at your rank')),
             onSelect = function()
                 PreviewAircraft(ac.model, airportCode)
                 lib.registerContext({
                     id = 'dps_air_preview_view',
-                    onExit = EndAircraftPreview,  -- ESC/close ends the orbit cam, not a softlock
                     title = ac.label .. (locked and ('  (locked - ' .. needName .. ')') or ''),
                     options = {
                         { title = 'Back to aircraft list', icon = 'list',

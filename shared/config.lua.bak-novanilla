@@ -144,19 +144,31 @@ Config.HeliModels = {
 -- minRank gates which pilots may fly it (see Config.PilotRanks below).
 Config.Aircraft = {
     -- rank 1 - Student Pilot: props and trainers
+    { model = 'duster',    label = 'Duster',          passengers = 1,   cargo = 100,  fuelRate = 0.3, class = 'prop',   minRank = 1 },
+    { model = 'mammatus',  label = 'Mammatus',        passengers = 2,   cargo = 150,  fuelRate = 0.4, class = 'prop',   minRank = 1 },
+    { model = 'dodo',      label = 'Dodo',            passengers = 2,   cargo = 200,  fuelRate = 0.6, class = 'prop',   minRank = 1 },
+    { model = 'cuban800',  label = 'Cuban 800',       passengers = 2,   cargo = 250,  fuelRate = 0.5, class = 'prop',   minRank = 1 },
+    { model = 'stunt',     label = 'Mallard',         passengers = 2,   cargo = 100,  fuelRate = 0.4, class = 'prop',   minRank = 1 },
+    { model = 'velum',     label = 'Velum',           passengers = 4,   cargo = 300,  fuelRate = 0.5, class = 'prop',   minRank = 1 },
+    { model = 'velum2',    label = 'Velum 5-Seater',  passengers = 5,   cargo = 350,  fuelRate = 0.6, class = 'prop',   minRank = 1 },
     { model = '208',       label = 'Cessna 208 Caravan', passengers = 9, cargo = 500, fuelRate = 0.6, class = 'prop',   minRank = 1 },
     { model = 'emb100',    label = 'Embraer EMB-100', passengers = 15,  cargo = 500,  fuelRate = 0.7, class = 'prop',   minRank = 1 },
     { model = 'emb120',    label = 'Embraer EMB-120', passengers = 30,  cargo = 700,  fuelRate = 0.8, class = 'prop',   minRank = 1 },
     -- rank 2 - First Officer: small regional
+    { model = 'vestra',    label = 'Vestra',          passengers = 2,   cargo = 200,  fuelRate = 0.7, class = 'small',  minRank = 2 },
+    { model = 'shamal',    label = 'Shamal',          passengers = 8,   cargo = 400,  fuelRate = 0.9, class = 'small',  minRank = 2 },
+    { model = 'luxor',     label = 'Luxor',           passengers = 10,  cargo = 500,  fuelRate = 1.0, class = 'small',  minRank = 2 },
+    { model = 'luxor2',    label = 'Luxor Deluxe',    passengers = 10,  cargo = 500,  fuelRate = 1.1, class = 'small',  minRank = 2 },
     { model = 'ha420',     label = 'HondaJet HA-420', passengers = 6,   cargo = 300,  fuelRate = 0.8, class = 'small',  minRank = 2 },
-    { model = 'ogham',     label = 'Buckingham Ogham', passengers = 8,  cargo = 400,  fuelRate = 0.9, class = 'small',  minRank = 2 },
     { model = 'atr72',     label = 'ATR 72',          passengers = 70,  cargo = 1500, fuelRate = 1.0, class = 'medium', minRank = 2 },
     { model = 'saab2000',  label = 'Saab 2000',       passengers = 50,  cargo = 1200, fuelRate = 0.9, class = 'medium', minRank = 2 },
     { model = 'emb145',    label = 'Embraer ERJ-145', passengers = 50,  cargo = 1200, fuelRate = 1.0, class = 'medium', minRank = 2 },
-    { model = 'e145',      label = 'Embraer ERJ-145 (Interior)', passengers = 50, cargo = 1200, fuelRate = 1.0, class = 'medium', minRank = 2 },
     { model = '8q400',     label = 'Dash 8 Q400',     passengers = 78,  cargo = 1600, fuelRate = 1.0, class = 'medium', minRank = 2 },
     { model = 'bac',       label = 'BAC One-Eleven',  passengers = 80,  cargo = 1800, fuelRate = 1.4, class = 'medium', minRank = 2 },
     -- rank 3 - Captain: classic narrow-bodies
+    { model = 'nimbus',    label = 'Nimbus',          passengers = 12,  cargo = 600,  fuelRate = 1.0, class = 'medium', minRank = 3 },
+    { model = 'miljet',    label = 'Miljet',          passengers = 16,  cargo = 800,  fuelRate = 1.2, class = 'medium', minRank = 3 },
+    { model = 'titan',     label = 'Titan',           passengers = 50,  cargo = 5000, fuelRate = 2.0, class = 'large',  minRank = 3 },
     { model = 'fokker100', label = 'Fokker 100',      passengers = 100, cargo = 2200, fuelRate = 1.3, class = 'medium', minRank = 3 },
     { model = 'emb175',    label = 'Embraer E175',    passengers = 80,  cargo = 2000, fuelRate = 1.1, class = 'medium', minRank = 3 },
     { model = 'emb190',    label = 'Embraer E190',    passengers = 100, cargo = 2400, fuelRate = 1.2, class = 'medium', minRank = 3 },
@@ -167,6 +179,9 @@ Config.Aircraft = {
     { model = '737400',    label = 'Boeing 737-400',  passengers = 145, cargo = 3400, fuelRate = 2.4, class = 'large',  minRank = 3 },
     { model = '737500',    label = 'Boeing 737-500',  passengers = 120, cargo = 3100, fuelRate = 2.3, class = 'large',  minRank = 3 },
     -- rank 4 - Senior Captain: modern narrow-bodies
+    { model = 'jet',       label = 'Commercial Jet',  passengers = 150, cargo = 3000, fuelRate = 2.0, class = 'large',  minRank = 4 },
+    { model = 'cargoplane', label = 'Cargo Plane',    passengers = 0,   cargo = 10000, fuelRate = 2.5, class = 'cargo', minRank = 4 },
+    { model = 'alkonost',  label = 'Alkonost',        passengers = 0,   cargo = 8000, fuelRate = 3.0, class = 'cargo',  minRank = 4 },
     { model = '737600',    label = 'Boeing 737-600',  passengers = 120, cargo = 3200, fuelRate = 2.1, class = 'large',  minRank = 4 },
     { model = '737700',    label = 'Boeing 737-700',  passengers = 140, cargo = 3400, fuelRate = 2.0, class = 'large',  minRank = 4 },
     { model = '737800',    label = 'Boeing 737-800',  passengers = 170, cargo = 3800, fuelRate = 2.0, class = 'large',  minRank = 4 },

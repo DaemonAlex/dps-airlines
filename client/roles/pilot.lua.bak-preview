@@ -26,14 +26,6 @@ function OpenPilotMenu(airportCode)
             end,
         },
         {
-            title = 'Aircraft Preview',
-            description = 'Browse the fleet - see what your rank unlocks',
-            icon = 'eye',
-            onSelect = function()
-                OpenAircraftPreview(airportCode)
-            end,
-        },
-        {
             title = 'View Flight Log',
             description = 'View your flight history',
             icon = 'book',
@@ -105,15 +97,10 @@ function OpenFlightSetup(airportCode)
     local airport = Locations.GetAirport(airportCode)
     if not airport then return end
 
-    -- Build aircraft options (rank-locked entries are marked; the server
-    -- enforces the lock regardless of what the client submits)
-    local myRank = lib.callback.await('dps-airlines:server:getPilotRank', false) or { rank = 1 }
+    -- Build aircraft options
     local aircraftOptions = {}
     for _, ac in ipairs(Config.Aircraft) do
-        local locked = (ac.minRank or 1) > myRank.rank
-        aircraftOptions[#aircraftOptions + 1] = {
-            label = (locked and '[LOCKED] ' or '') .. ac.label .. ' (' .. ac.class .. ')',
-            value = ac.model }
+        aircraftOptions[#aircraftOptions + 1] = { label = ac.label .. ' (' .. ac.class .. ')', value = ac.model }
     end
 
     -- Build destination options
@@ -129,7 +116,7 @@ function OpenFlightSetup(airportCode)
     local input = lib.inputDialog('Flight Setup', {
         { type = 'select', label = 'Aircraft', options = aircraftOptions, required = true },
         { type = 'select', label = 'Destination', options = destOptions, required = true },
-        { type = 'number', label = 'Passengers', min = 0, max = 300, default = 0 }, -- fleet max (A350); server enforces per-aircraft limit
+        { type = 'number', label = 'Passengers', min = 0, max = 200, default = 0 },
         { type = 'number', label = 'Cargo Weight (kg)', min = 0, max = 10000, default = 0 },
         { type = 'select', label = 'Flight Type', options = {
             { label = 'Scheduled', value = 'scheduled' },
@@ -184,22 +171,13 @@ function SpawnFlightAircraft(model, airportCode, flightData)
         end
 
         local hash = joaat(spawnData.model)
-        -- Guard the addon model load: the server already created the ACTIVE flight,
-        -- so a missing/renamed addon must fail that flight instead of orphaning it.
-        if not lib.requestModel(hash, 15000) then
-            Bridge.Notify('Aircraft model failed to load - flight cancelled', 'error')
-            if flightData and flightData.flightId then
-                lib.callback.await('dps-airlines:server:failFlight', false, flightData.flightId, 'model_load_failed')
-            end
-            return
-        end
+        lib.requestModel(hash)
 
         local coords = spawnData.coords
         local vehicle = CreateVehicle(hash, coords.x, coords.y, coords.z, spawnData.heading, true, false)
 
         SetVehicleOnGroundProperly(vehicle)
         SetVehicleEngineOn(vehicle, false, true, false)
-        if ApplyAircraftInterior then ApplyAircraftInterior(vehicle) end  -- fit cabin/cockpit interior
         SetModelAsNoLongerNeeded(hash)
 
         State.CurrentPlane = vehicle
@@ -228,20 +206,17 @@ function OpenCharterMenu(airportCode)
         end
     end
 
-    local myRank = lib.callback.await('dps-airlines:server:getPilotRank', false) or { rank = 1 }
     local aircraftOptions = {}
     for _, ac in ipairs(Config.Aircraft) do
         if ac.passengers > 0 then
-            local locked = (ac.minRank or 1) > myRank.rank
-            aircraftOptions[#aircraftOptions + 1] = {
-                label = (locked and '[LOCKED] ' or '') .. ac.label, value = ac.model }
+            aircraftOptions[#aircraftOptions + 1] = { label = ac.label, value = ac.model }
         end
     end
 
     local input = lib.inputDialog('Charter Flight', {
         { type = 'select', label = 'Destination', options = destOptions, required = true },
         { type = 'select', label = 'Aircraft', options = aircraftOptions, required = true },
-        { type = 'number', label = 'Passengers', min = 1, max = 300, default = 1 }, -- fleet max; server enforces per-aircraft limit
+        { type = 'number', label = 'Passengers', min = 1, max = 200, default = 1 },
         { type = 'checkbox', label = 'VIP Service' },
         { type = 'number', label = 'Luggage Pieces', min = 0, max = 50, default = 0 },
     })
@@ -337,93 +312,3 @@ function HireNearbyPlayer()
 
     TriggerServerEvent('dps-airlines:server:hirePlayer', input[1], input[2])
 end
-
-
-------------------------------------------------------------------
--- Aircraft preview + rank display (added 2026-08-26).
--- Local-only ghost model at the airport's first plane pad with a slow
--- orbit camera. Rank locks come from dps-airlines:server:getPilotRank.
-------------------------------------------------------------------
-local previewVeh, previewCam = nil, nil
-
-local function EndAircraftPreview()
-    if previewCam then
-        RenderScriptCams(false, true, 500, true, true)
-        DestroyCam(previewCam, false)
-        previewCam = nil
-    end
-    if previewVeh and DoesEntityExist(previewVeh) then DeleteEntity(previewVeh) end
-    previewVeh = nil
-end
-
-local function PreviewAircraft(model, airportCode)
-    EndAircraftPreview()
-    local airport = Locations.GetAirport(airportCode)
-    if not airport then return end
-    local s = airport.spawns and airport.spawns.planes and airport.spawns.planes[1]
-    if not s then return end
-    local hash = joaat(model)
-    lib.requestModel(hash, 15000)
-    previewVeh = CreateVehicle(hash, s.x, s.y, s.z, s.w or 0.0, false, false)
-    SetEntityAlpha(previewVeh, 210, false)
-    FreezeEntityPosition(previewVeh, true)
-    SetEntityCollision(previewVeh, false, false)  -- ghost: real flights spawn on the same pad
-    SetVehicleDoorsLocked(previewVeh, 2)
-    SetModelAsNoLongerNeeded(hash)
-    previewCam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
-    local min, max = GetModelDimensions(hash)
-    local radius = math.max(max.x - min.x, max.y - min.y) * 1.2 + 10.0
-    RenderScriptCams(true, true, 500, true, true)
-    CreateThread(function()
-        local h = 0.0
-        while previewVeh and DoesEntityExist(previewVeh) and previewCam do
-            h = h + 0.2
-            SetCamCoord(previewCam,
-                s.x + math.cos(math.rad(h)) * radius,
-                s.y + math.sin(math.rad(h)) * radius,
-                s.z + radius * 0.35)
-            PointCamAtEntity(previewCam, previewVeh, 0.0, 0.0, 0.0, true)
-            Wait(0)
-        end
-    end)
-end
-
-function OpenAircraftPreview(airportCode)
-    local myRank = lib.callback.await('dps-airlines:server:getPilotRank', false)
-        or { rank = 1, name = 'Student Pilot' }
-    local opts = {}
-    for _, ac in ipairs(Config.Aircraft) do
-        local minRank = ac.minRank or 1
-        local locked = minRank > myRank.rank
-        local needName = Config.PilotRanks[minRank] and Config.PilotRanks[minRank].name or ('rank ' .. minRank)
-        opts[#opts + 1] = {
-            title = (locked and '[LOCKED] ' or '') .. ac.label,
-            description = ('%s | %d pax | %s'):format(ac.class, ac.passengers or 0,
-                locked and ('requires ' .. needName) or ('flyable at your rank')),
-            onSelect = function()
-                PreviewAircraft(ac.model, airportCode)
-                lib.registerContext({
-                    id = 'dps_air_preview_view',
-                    onExit = EndAircraftPreview,  -- ESC/close ends the orbit cam, not a softlock
-                    title = ac.label .. (locked and ('  (locked - ' .. needName .. ')') or ''),
-                    options = {
-                        { title = 'Back to aircraft list', icon = 'list',
-                          onSelect = function() EndAircraftPreview() OpenAircraftPreview(airportCode) end },
-                        { title = 'Exit preview', icon = 'xmark', onSelect = EndAircraftPreview },
-                    },
-                })
-                lib.showContext('dps_air_preview_view')
-            end,
-        }
-    end
-    lib.registerContext({
-        id = 'dps_air_preview',
-        title = ('Aircraft - %s (%.2fx pay)'):format(myRank.name, myRank.payMultiplier or 1.0),
-        options = opts,
-    })
-    lib.showContext('dps_air_preview')
-end
-
-AddEventHandler('onResourceStop', function(res)
-    if res == GetCurrentResourceName() then EndAircraftPreview() end
-end)
