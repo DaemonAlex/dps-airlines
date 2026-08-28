@@ -31,6 +31,14 @@ function OpenAttendantMenu(airportCode)
             disabled = State.CurrentFlight == nil,
         },
         {
+            title = 'Seat Nearby Passengers',
+            description = 'Board nearby players into free cabin seats',
+            icon = 'users',
+            onSelect = function()
+                if SeatNearbyPassengers then SeatNearbyPassengers() end
+            end,
+        },
+        {
             title = 'In-Flight Service',
             description = 'Serve passengers during flight',
             icon = 'utensils',

@@ -29,6 +29,15 @@ lib.callback.register('dps-airlines:server:bookCharter', function(source, data)
     local player = Bridge.GetPlayer(source)
     if not player then return nil end
 
+    -- Rank gate: same server-authoritative check startFlight/spawnAircraft use,
+    -- BEFORE any money moves - else an under-ranked pilot's charter charges the
+    -- society account and inserts an ACTIVE flight that spawnAircraft then rejects.
+    local charterRank = GetPilotRankShared(player.identifier)
+    if (aircraft.minRank or 1) > charterRank.rank then
+        local need = Config.PilotRanks[aircraft.minRank or 1]
+        return nil, ('Requires %s - you are %s'):format(need and need.name or 'a higher rank', charterRank.name)
+    end
+
     -- Calculate price server-side (ignore any client-sent price)
     local price = Payments.CalculateCharterPrice(
         data.from, data.to, data.passengers or 0, data.vip or false, data.luggage or 0

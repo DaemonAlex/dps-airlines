@@ -6,29 +6,7 @@ interface TypeRating {
   granted: number
 }
 
-const allAircraft = [
-  { model: 'luxor', label: 'Luxor', class: 'small', icon: '&#9992;' },
-  { model: 'luxor2', label: 'Luxor Deluxe', class: 'small', icon: '&#9992;' },
-  { model: 'shamal', label: 'Shamal', class: 'small', icon: '&#9992;' },
-  { model: 'miljet', label: 'Miljet', class: 'medium', icon: '&#9992;' },
-  { model: 'nimbus', label: 'Nimbus', class: 'medium', icon: '&#9992;' },
-  { model: 'vestra', label: 'Vestra', class: 'small', icon: '&#9992;' },
-  { model: 'velum', label: 'Velum', class: 'prop', icon: '&#9992;' },
-  { model: 'velum2', label: 'Velum 5-Seater', class: 'prop', icon: '&#9992;' },
-  { model: 'dodo', label: 'Dodo', class: 'prop', icon: '&#9992;' },
-  { model: 'cuban800', label: 'Cuban 800', class: 'prop', icon: '&#9992;' },
-  { model: 'mammatus', label: 'Mammatus', class: 'prop', icon: '&#9992;' },
-  { model: 'duster', label: 'Duster', class: 'prop', icon: '&#9992;' },
-  { model: 'stunt', label: 'Mallard', class: 'prop', icon: '&#9992;' },
-  { model: 'titan', label: 'Titan', class: 'large', icon: '&#9992;' },
-  { model: 'cargoplane', label: 'Cargo Plane', class: 'cargo', icon: '&#9992;' },
-  { model: 'jet', label: 'Commercial Jet', class: 'large', icon: '&#9992;' },
-  { model: 'alkonost', label: 'Alkonost', class: 'cargo', icon: '&#9992;' },
-  { model: 'maverick', label: 'Maverick', class: 'helicopter', icon: '&#128641;' },
-  { model: 'frogger', label: 'Frogger', class: 'helicopter', icon: '&#128641;' },
-  { model: 'swift', label: 'Swift', class: 'helicopter', icon: '&#128641;' },
-  { model: 'supervolito', label: 'SuperVolito', class: 'helicopter', icon: '&#128641;' },
-]
+interface FleetPlane { model: string; label: string; class: string; minRank?: number }
 
 const classLabels: Record<string, string> = {
   prop: 'Propeller',
@@ -41,13 +19,15 @@ const classLabels: Record<string, string> = {
 
 export function TypeRatings() {
   const [ratings, setRatings] = useState<Record<string, TypeRating>>({})
+  const [allAircraft, setAllAircraft] = useState<FleetPlane[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
 
   useEffect(() => {
-    fetchCallback<Record<string, TypeRating>>('getTypeRatings')
+    fetchCallback<{ ratings: Record<string, TypeRating>; fleet: FleetPlane[] }>('getTypeRatings')
       .then((data) => {
-        setRatings(data && typeof data === 'object' ? data : {})
+        setRatings(data && data.ratings ? data.ratings : {})
+        setAllAircraft(data && Array.isArray(data.fleet) ? data.fleet : [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -94,7 +74,7 @@ export function TypeRatings() {
           return (
             <div key={aircraft.model} className={`aircraft-card ${isUnlocked ? 'unlocked' : 'locked'}`}>
               <div style={{ fontSize: 32, marginBottom: 8 }}
-                dangerouslySetInnerHTML={{ __html: aircraft.icon }} />
+                dangerouslySetInnerHTML={{ __html: aircraft.class === 'helicopter' ? '&#128641;' : '&#9992;' }} />
               <div className="aircraft-name">{aircraft.label}</div>
               <div className="aircraft-class">{classLabels[aircraft.class] || aircraft.class}</div>
               <div style={{ marginTop: 8 }}>

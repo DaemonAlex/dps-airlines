@@ -80,6 +80,19 @@ end)
 ---Ensure pilot stats exist for a player
 ---@param citizenid string
 ---@param role string|nil
+-- Shared pilot-rank resolver (global): cached stats -> Config rank.
+-- Single source of truth for every rank gate/pay lookup (pilot startFlight,
+-- spawnAircraft, completeFlight pay, charter booking, client rank callback),
+-- routed through the same Cache layer as getPilotStats so it doesn't add
+-- uncached DB reads on the menu hot path.
+function GetPilotRankShared(citizenid)
+    local stats = Cache.Get('stats_' .. citizenid, Constants.CACHE_PILOT_STATS, function()
+        return MySQL.single.await('SELECT * FROM airline_pilot_stats WHERE citizenid = ?', { citizenid })
+    end)
+    return Config.GetRankForStats(stats and stats.flight_hours or 0,
+                                  stats and stats.successful_flights or 0), stats
+end
+
 local function EnsurePilotStats(citizenid, role)
     local exists = MySQL.scalar.await('SELECT COUNT(*) FROM airline_pilot_stats WHERE citizenid = ?', { citizenid })
     if exists == 0 then
@@ -175,10 +188,15 @@ lib.callback.register('dps-airlines:server:getTypeRatings', function(source)
     if not player then return nil end
 
     local stats = MySQL.single.await('SELECT type_ratings FROM airline_pilot_stats WHERE citizenid = ?', { player.identifier })
-    if stats and stats.type_ratings then
-        return json.decode(stats.type_ratings) or {}
+    local ratings = (stats and stats.type_ratings and json.decode(stats.type_ratings)) or {}
+
+    -- Feed the live fleet to the NUI so the Type Ratings tab can't drift from
+    -- Config.Aircraft (was a hardcoded 21-plane list of the old vanilla fleet).
+    local fleet = {}
+    for _, ac in ipairs(Config.Aircraft) do
+        fleet[#fleet + 1] = { model = ac.model, label = ac.label, class = ac.class, minRank = ac.minRank or 1 }
     end
-    return {}
+    return { ratings = ratings, fleet = fleet }
 end)
 
 -- Get incidents

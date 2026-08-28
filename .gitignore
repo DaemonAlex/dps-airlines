@@ -13,3 +13,5 @@ Thumbs.db
 
 # Logs
 *.log
+*.bak
+*.bak-*

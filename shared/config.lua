@@ -141,25 +141,74 @@ Config.HeliModels = {
 }
 
 -- Aircraft configuration
+-- minRank gates which pilots may fly it (see Config.PilotRanks below).
 Config.Aircraft = {
-    { model = 'luxor',     label = 'Luxor',         passengers = 10, cargo = 500,  fuelRate = 1.0, class = 'small' },
-    { model = 'luxor2',    label = 'Luxor Deluxe',  passengers = 10, cargo = 500,  fuelRate = 1.1, class = 'small' },
-    { model = 'shamal',    label = 'Shamal',         passengers = 8,  cargo = 400,  fuelRate = 0.9, class = 'small' },
-    { model = 'miljet',    label = 'Miljet',         passengers = 16, cargo = 800,  fuelRate = 1.2, class = 'medium' },
-    { model = 'nimbus',    label = 'Nimbus',         passengers = 12, cargo = 600,  fuelRate = 1.0, class = 'medium' },
-    { model = 'vestra',    label = 'Vestra',         passengers = 2,  cargo = 200,  fuelRate = 0.7, class = 'small' },
-    { model = 'velum',     label = 'Velum',          passengers = 4,  cargo = 300,  fuelRate = 0.5, class = 'prop' },
-    { model = 'velum2',    label = 'Velum 5-Seater', passengers = 5,  cargo = 350,  fuelRate = 0.6, class = 'prop' },
-    { model = 'dodo',      label = 'Dodo',           passengers = 2,  cargo = 200,  fuelRate = 0.6, class = 'prop' },
-    { model = 'cuban800',  label = 'Cuban 800',      passengers = 2,  cargo = 250,  fuelRate = 0.5, class = 'prop' },
-    { model = 'mammatus',  label = 'Mammatus',       passengers = 2,  cargo = 150,  fuelRate = 0.4, class = 'prop' },
-    { model = 'duster',    label = 'Duster',         passengers = 1,  cargo = 100,  fuelRate = 0.3, class = 'prop' },
-    { model = 'stunt',     label = 'Mallard',        passengers = 2,  cargo = 100,  fuelRate = 0.4, class = 'prop' },
-    { model = 'titan',     label = 'Titan',          passengers = 50, cargo = 5000, fuelRate = 2.0, class = 'large' },
-    { model = 'cargoplane', label = 'Cargo Plane',   passengers = 0,  cargo = 10000, fuelRate = 2.5, class = 'cargo' },
-    { model = 'jet',       label = 'Commercial Jet', passengers = 150, cargo = 3000, fuelRate = 2.0, class = 'large' },
-    { model = 'alkonost',  label = 'Alkonost',       passengers = 0,  cargo = 8000, fuelRate = 3.0, class = 'cargo' },
+    -- rank 1 - Student Pilot: props and trainers
+    { model = '208',       label = 'Cessna 208 Caravan', passengers = 9, cargo = 500, fuelRate = 0.6, class = 'prop',   minRank = 1 },
+    { model = 'emb100',    label = 'Embraer EMB-100', passengers = 15,  cargo = 500,  fuelRate = 0.7, class = 'prop',   minRank = 1 },
+    { model = 'emb120',    label = 'Embraer EMB-120', passengers = 30,  cargo = 700,  fuelRate = 0.8, class = 'prop',   minRank = 1 },
+    -- rank 2 - First Officer: small regional
+    { model = 'ha420',     label = 'HondaJet HA-420', passengers = 6,   cargo = 300,  fuelRate = 0.8, class = 'small',  minRank = 2 },
+    { model = 'ogham',     label = 'Buckingham Ogham', passengers = 8,  cargo = 400,  fuelRate = 0.9, class = 'small',  minRank = 2 },
+    { model = 'atr72',     label = 'ATR 72',          passengers = 70,  cargo = 1500, fuelRate = 1.0, class = 'medium', minRank = 2 },
+    { model = 'saab2000',  label = 'Saab 2000',       passengers = 50,  cargo = 1200, fuelRate = 0.9, class = 'medium', minRank = 2 },
+    { model = 'emb145',    label = 'Embraer ERJ-145', passengers = 50,  cargo = 1200, fuelRate = 1.0, class = 'medium', minRank = 2 },
+    { model = 'e145',      label = 'Embraer ERJ-145 (Interior)', passengers = 50, cargo = 1200, fuelRate = 1.0, class = 'medium', minRank = 2 },
+    { model = '8q400',     label = 'Dash 8 Q400',     passengers = 78,  cargo = 1600, fuelRate = 1.0, class = 'medium', minRank = 2 },
+    { model = 'bac',       label = 'BAC One-Eleven',  passengers = 80,  cargo = 1800, fuelRate = 1.4, class = 'medium', minRank = 2 },
+    -- rank 3 - Captain: classic narrow-bodies
+    { model = 'fokker100', label = 'Fokker 100',      passengers = 100, cargo = 2200, fuelRate = 1.3, class = 'medium', minRank = 3 },
+    { model = 'emb175',    label = 'Embraer E175',    passengers = 80,  cargo = 2000, fuelRate = 1.1, class = 'medium', minRank = 3 },
+    { model = 'emb190',    label = 'Embraer E190',    passengers = 100, cargo = 2400, fuelRate = 1.2, class = 'medium', minRank = 3 },
+    { model = 'md80',      label = 'McDonnell MD-80', passengers = 150, cargo = 3200, fuelRate = 2.2, class = 'large',  minRank = 3 },
+    { model = 'b727',      label = 'Boeing 727',      passengers = 130, cargo = 3000, fuelRate = 2.4, class = 'large',  minRank = 3 },
+    { model = 'tu154m',    label = 'Tupolev Tu-154M', passengers = 150, cargo = 3200, fuelRate = 2.4, class = 'large',  minRank = 3 },
+    { model = '737200',    label = 'Boeing 737-200',  passengers = 110, cargo = 3000, fuelRate = 2.6, class = 'large',  minRank = 3 },
+    { model = '737400',    label = 'Boeing 737-400',  passengers = 145, cargo = 3400, fuelRate = 2.4, class = 'large',  minRank = 3 },
+    { model = '737500',    label = 'Boeing 737-500',  passengers = 120, cargo = 3100, fuelRate = 2.3, class = 'large',  minRank = 3 },
+    -- rank 4 - Senior Captain: modern narrow-bodies
+    { model = '737600',    label = 'Boeing 737-600',  passengers = 120, cargo = 3200, fuelRate = 2.1, class = 'large',  minRank = 4 },
+    { model = '737700',    label = 'Boeing 737-700',  passengers = 140, cargo = 3400, fuelRate = 2.0, class = 'large',  minRank = 4 },
+    { model = '737800',    label = 'Boeing 737-800',  passengers = 170, cargo = 3800, fuelRate = 2.0, class = 'large',  minRank = 4 },
+    { model = '737900',    label = 'Boeing 737-900',  passengers = 180, cargo = 4000, fuelRate = 2.0, class = 'large',  minRank = 4 },
+    { model = '737900er',  label = 'Boeing 737-900ER', passengers = 190, cargo = 4200, fuelRate = 1.9, class = 'large', minRank = 4 },
+    { model = 'a319',      label = 'Airbus A319',     passengers = 140, cargo = 3400, fuelRate = 2.0, class = 'large',  minRank = 4 },
+    { model = 'a320',      label = 'Airbus A320',     passengers = 160, cargo = 3700, fuelRate = 2.0, class = 'large',  minRank = 4 },
+    { model = '757',       label = 'Boeing 757',      passengers = 200, cargo = 4500, fuelRate = 2.2, class = 'large',  minRank = 4 },
+    -- rank 5 - Line Captain: newest narrow-bodies
+    { model = '737',       label = 'Boeing 737 MAX 7',  passengers = 150, cargo = 3600, fuelRate = 1.8, class = 'large', minRank = 5 },
+    { model = '738',       label = 'Boeing 737 MAX 8',  passengers = 175, cargo = 4000, fuelRate = 1.8, class = 'large', minRank = 5 },
+    { model = '739',       label = 'Boeing 737 MAX 9',  passengers = 180, cargo = 4200, fuelRate = 1.8, class = 'large', minRank = 5 },
+    { model = '7310',      label = 'Boeing 737 MAX 10', passengers = 195, cargo = 4500, fuelRate = 1.8, class = 'large', minRank = 5 },
+    { model = 'a321neo',   label = 'Airbus A321neo',  passengers = 200, cargo = 4600, fuelRate = 1.7, class = 'large',  minRank = 5 },
+    { model = 'a220',      label = 'Airbus A220',     passengers = 130, cargo = 3200, fuelRate = 1.6, class = 'large',  minRank = 5 },
+    { model = 'e190e2',    label = 'Embraer E190-E2', passengers = 110, cargo = 2800, fuelRate = 1.5, class = 'medium', minRank = 5 },
+    -- rank 6 - Fleet Captain: the only wide-bodies on the island
+    { model = 'a350',      label = 'Airbus A350',     passengers = 300, cargo = 8000, fuelRate = 2.8, class = 'large',  minRank = 6 },
 }
+
+-- Pilot progression: rank is computed from airline_pilot_stats (already tracked).
+-- A pilot qualifies for a rank when BOTH thresholds are met. payMultiplier
+-- scales the whole crew payout of flights they captain.
+Config.PilotRanks = {
+    { rank = 1, name = 'Student Pilot',  minHours = 0,   minFlights = 0,   payMultiplier = 1.00 },
+    { rank = 2, name = 'First Officer',  minHours = 5,   minFlights = 10,  payMultiplier = 1.10 },
+    { rank = 3, name = 'Captain',        minHours = 15,  minFlights = 30,  payMultiplier = 1.25 },
+    { rank = 4, name = 'Senior Captain', minHours = 40,  minFlights = 75,  payMultiplier = 1.40 },
+    { rank = 5, name = 'Line Captain',   minHours = 80,  minFlights = 150, payMultiplier = 1.60 },
+    { rank = 6, name = 'Fleet Captain',  minHours = 150, minFlights = 300, payMultiplier = 1.80 },
+}
+
+-- Shared helper: highest rank whose thresholds the stats satisfy.
+function Config.GetRankForStats(flightHours, successfulFlights)
+    local best = Config.PilotRanks[1]
+    for _, r in ipairs(Config.PilotRanks) do
+        if (flightHours or 0) >= r.minHours and (successfulFlights or 0) >= r.minFlights then
+            best = r
+        end
+    end
+    return best
+end
 
 -- Fuel configuration
 Config.Fuel = {
