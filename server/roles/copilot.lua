@@ -74,6 +74,17 @@ lib.callback.register('dps-airlines:server:copilotChecklist', function(source, f
     )
     if not assignment then return false end
 
+    -- Preflight signed off by the first officer: hand the captain the engine
+    -- start. dps-aviation's start sequence runs on the pilot's own client
+    -- (it owns the aircraft), so the captain's client gets the word, not ours.
+    if checklistType == 'preflight' then
+        local flight = MySQL.single.await('SELECT pilot_citizenid FROM airline_flights WHERE id = ?', { flightId })
+        local captain = flight and Bridge.GetPlayerByIdentifier(flight.pilot_citizenid)
+        if captain and captain.source then
+            TriggerClientEvent('dps-airlines:client:copilotPreflightDone', captain.source, flightId)
+        end
+    end
+
     -- Log checklist completion (for stat tracking)
     return true, checklistType
 end)

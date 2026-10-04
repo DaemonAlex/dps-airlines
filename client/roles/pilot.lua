@@ -427,3 +427,18 @@ end
 AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() then EndAircraftPreview() end
 end)
+
+-- The first officer's preflight checklist hands the captain the engine start.
+-- dps-aviation takes the aircraft from cold to GO with its own stage timings;
+-- without dps-aviation running this is a no-op and the captain starts by hand.
+RegisterNetEvent('dps-airlines:client:copilotPreflightDone', function(flightId)
+    if not State.CurrentFlight or State.CurrentFlight.flightId ~= flightId then return end
+    local plane = State.CurrentPlane
+    if not plane or not DoesEntityExist(plane) then return end
+    if GetPedInVehicleSeat(plane, -1) ~= PlayerPedId() then return end
+    if GetResourceState('dps-aviation') ~= 'started' then return end
+    local status = exports['dps-aviation']:preflightStatus()
+    if status == 'go' or status == 'spooling' then return end
+    Bridge.Notify('First officer: preflight checklist complete. Starting engines.', 'success', 5000)
+    exports['dps-aviation']:startPreflight()
+end)
