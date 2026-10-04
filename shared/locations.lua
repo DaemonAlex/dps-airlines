@@ -37,7 +37,7 @@ Locations.Airports = {
             { label = 'Gate B1', coords = vector3(-1020.0, -2750.0, 21.36), heading = 90.0 },
             { label = 'Gate B2', coords = vector3(-1020.0, -2765.0, 21.36), heading = 90.0 },
         },
-        npc = vector4(-1040.46, -2745.57, 21.36, 240.0),
+        -- npc = vector4(-1040.46, -2745.57, 21.36, 240.0), -- DPS 2026-09-27: LSIA desk is Captain Marcus (dps-ainpcs); the duty zone below still works
     },
 
     ['SSA'] = {
@@ -60,7 +60,7 @@ Locations.Airports = {
             },
         },
         terminals = {
-            duty = vector3(1693.30, 3280.82, 41.14),
+            duty = vector3(1701.96, 3295.24, 41.55), -- DPS 2026-09-27: moved under cover with the clerk
             charter = vector3(1700.0, 3283.0, 41.14),
             cargo = vector3(1672.0, 3285.0, 41.14),
             fuel = vector3(1680.0, 3275.0, 41.14),
@@ -69,7 +69,7 @@ Locations.Airports = {
         gates = {
             { label = 'Pad 1', coords = vector3(1692.87, 3281.69, 41.14), heading = 92.0 },
         },
-        npc = vector4(1693.30, 3280.82, 41.14, 225.0),
+        npc = vector4(1701.96, 3295.24, 41.55, 225.0), -- DPS 2026-09-27: Damon mark; later sells tickets and handles cargo
     },
 
     ['FZ'] = {
