@@ -160,7 +160,7 @@ export function FlightLog() {
                     </span>
                   ) : '-'}
                 </td>
-                <td style={{ color: '#4ecca3', fontWeight: 600 }}>${flight.total_pay.toLocaleString()}</td>
+                <td style={{ color: '#4ec98a', fontWeight: 600 }}>${flight.total_pay.toLocaleString()}</td>
                 <td style={{ fontSize: 12, color: '#667788' }}>
                   {new Date(flight.departure_time).toLocaleDateString()}
                 </td>

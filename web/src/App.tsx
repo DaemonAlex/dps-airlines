@@ -72,8 +72,10 @@ function App() {
       <div className="nui-container">
         <div className="nui-header">
           <div className="nui-logo">
+            {/* DPS 2026-10-10: house logo; players never see "DPS" as text */}
+            <img src="dps-logo.svg" alt="DelPerroSands" style={{ height: 24, width: 'auto', flex: 'none' }} />
             <span className="logo-icon">&#9992;</span>
-            <span className="logo-text">DPS Airlines</span>
+            <span className="logo-text">Airlines</span>
           </div>
           <nav className="nui-nav">
             {(Object.keys(pages) as Page[]).map((page) => (

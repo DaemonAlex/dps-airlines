@@ -158,8 +158,8 @@ export function FlightTracker() {
             <div className="stat-card">
               <div className="stat-label">Fuel</div>
               <div className="stat-number" style={{
-                color: selectedFlight.fuel_level < 20 ? '#e94560' :
-                  selectedFlight.fuel_level < 50 ? '#ffc107' : '#4ecca3'
+                color: selectedFlight.fuel_level < 20 ? '#ff6b6b' :
+                  selectedFlight.fuel_level < 50 ? '#ffb347' : '#4ec98a'
               }}>
                 {Math.floor(selectedFlight.fuel_level)}%
               </div>
@@ -198,7 +198,7 @@ export function FlightTracker() {
                     <td>{Math.floor(f.speed)} kts</td>
                     <td>{Math.floor(f.altitude)} ft</td>
                     <td style={{
-                      color: f.fuel_level < 20 ? '#e94560' : f.fuel_level < 50 ? '#ffc107' : '#4ecca3'
+                      color: f.fuel_level < 20 ? '#ff6b6b' : f.fuel_level < 50 ? '#ffb347' : '#4ec98a'
                     }}>
                       {Math.floor(f.fuel_level)}%
                     </td>
