@@ -57,7 +57,7 @@ export function Incidents() {
         <div className="stat-card">
           <div className="stat-label">Safety Score</div>
           <div className="stat-number" style={{
-            color: safetyScore >= 80 ? '#4ecca3' : safetyScore >= 50 ? '#ffc107' : '#e94560'
+            color: safetyScore >= 80 ? '#4ec98a' : safetyScore >= 50 ? '#ffb347' : '#ff6b6b'
           }}>
             {safetyScore}%
           </div>
@@ -68,7 +68,7 @@ export function Incidents() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Unresolved</div>
-          <div className="stat-number" style={{ color: '#e94560' }}>
+          <div className="stat-number" style={{ color: '#ff6b6b' }}>
             {incidents.filter((i) => !i.resolved).length}
           </div>
         </div>
@@ -86,7 +86,7 @@ export function Incidents() {
             {incidents.map((incident) => (
               <div key={incident.id} className="card" style={{
                 borderLeft: `3px solid ${incident.severity === 'minor' ? '#3498db' :
-                  incident.severity === 'moderate' ? '#ffc107' : '#e94560'}`
+                  incident.severity === 'moderate' ? '#ffb347' : '#ff6b6b'}`
               }}>
                 <div className="card-header">
                   <div>
