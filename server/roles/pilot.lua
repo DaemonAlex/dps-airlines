@@ -32,6 +32,8 @@ lib.callback.register('dps-airlines:server:startFlight', function(source, data)
     local model = data.model
     local aircraft = Locations.GetAircraftConfig(model)
     if not aircraft then return nil, 'Invalid aircraft model' end
+    local noLicence = Validation.MissingPilotLicence(source, aircraft.class)
+    if noLicence then return nil, noLicence end
 
     if not Validation.ValidatePassengerCount(data.passengers or 0, model) then return nil, 'Invalid passenger count' end
     if not Validation.ValidateCargoWeight(data.cargoWeight or 0, model) then return nil, 'Invalid cargo weight' end
@@ -361,6 +363,8 @@ lib.callback.register('dps-airlines:server:spawnAircraft', function(source, mode
 
     local aircraft = Locations.GetAircraftConfig(model)
     if not aircraft then return nil, 'Invalid aircraft' end
+    local noLicence = Validation.MissingPilotLicence(source, aircraft.class)
+    if noLicence then return nil, noLicence end
 
     local sp = Bridge.GetPlayer(source)
     if not sp then return nil end
