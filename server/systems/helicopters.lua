@@ -50,6 +50,8 @@ lib.callback.register('dps-airlines:server:startHeliOp', function(source, data)
     if not ok then return nil, reason end
 
     if not Config.Helicopters.enabled then return nil, 'Helicopter ops disabled' end
+    local noLicence = Validation.MissingPilotLicence(source, 'heli')
+    if noLicence then return nil, noLicence end
     if not data or not data.opType then return nil, 'Invalid data' end
 
     local validTypes = { Constants.HELI_MEDEVAC, Constants.HELI_TOUR, Constants.HELI_VIP, Constants.HELI_SEARCH }
@@ -220,6 +222,8 @@ lib.callback.register('dps-airlines:server:spawnHelicopter', function(source, mo
 
     local heli = Locations.GetHeliConfig(model)
     if not heli then return nil, 'Invalid helicopter' end
+    local noLicence = Validation.MissingPilotLicence(source, 'heli')
+    if noLicence then return nil, noLicence end
 
     -- Find the helipad
     for _, pad in ipairs(Locations.Helipads) do

@@ -63,6 +63,35 @@ function Validation.CanFly(source)
     return roleConfig.canFly == true
 end
 
+-- City pilot licences, earned in the City Services app (dps-services, Damon
+-- 2026-10-11). Commercial Pilot flies props and small jets for pay, Airline
+-- Transport flies the medium and large airliners, helicopter work needs
+-- Commercial Pilot + Helicopter. The airline rank (minRank) still applies too.
+local PILOT_LICENCES = {
+    prop = { 'pilot_commercial' }, small = { 'pilot_commercial' },
+    medium = { 'pilot_atp' }, large = { 'pilot_atp' },
+    heli = { 'pilot_commercial', 'heli' },
+}
+local PILOT_LABELS = {
+    pilot_commercial = 'Commercial Pilot', pilot_atp = 'Airline Transport Pilot', heli = 'Helicopter',
+}
+
+---The first city licence this player lacks for an aircraft class, as a message, or nil.
+---@param source number
+---@param class string prop|small|medium|large|heli
+---@return string|nil
+function Validation.MissingPilotLicence(source, class)
+    local player = exports.qbx_core:GetPlayer(source)
+    local have = player and player.PlayerData.metadata and player.PlayerData.metadata.licences or {}
+    for _, id in ipairs(PILOT_LICENCES[class] or { 'pilot_atp' }) do
+        local held = have[id] == true or (id == 'pilot_commercial' and have.pilot_atp == true)
+        if not held then
+            return ('Needs a city %s licence (City Services app)'):format(PILOT_LABELS[id] or id)
+        end
+    end
+    return nil
+end
+
 ---Check if player can dispatch
 ---@param source number
 ---@return boolean
