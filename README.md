@@ -113,6 +113,18 @@ ensure dps-airlines
 
 - Los Santos Hospital, Maze Bank Tower, Vespucci Helipad, Sandy Shores Medical, Paleto Bay, LSIA Heliport
 
+## Commands
+
+Transit commands follow `/board<vehicle>` and `/exit<vehicle>` across DPS (trains use `/boardtrain` from dps-traintools). Plain `/board` is retired.
+
+| Command | Who | What it does |
+|---|---|---|
+| `/airlinemenu` | On-duty airline employees near an airport | Open the airline screen |
+| `/boardplane` | Anyone | Take a free cabin seat on the nearest aircraft or bus within 12 m |
+| `/exitplane` | Anyone on board | Leave the aircraft or bus, once it has stopped |
+
+Passengers can also board with the "Board" option on the aircraft (ox_target).
+
 ## Configuration
 
 Edit `shared/config.lua` for:
