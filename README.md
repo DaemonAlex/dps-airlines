@@ -122,8 +122,21 @@ Transit commands follow `/board<vehicle>` and `/exit<vehicle>` across DPS (train
 | `/airlinemenu` | On-duty airline employees near an airport | Open the airline screen |
 | `/boardplane` | Anyone | Take a free cabin seat on the nearest aircraft or bus within 12 m |
 | `/exitplane` | Anyone on board | Leave the aircraft or bus, once it has stopped |
+| `/airlinequalify [id]` | Admins (`group.admin`) | Give a pilot the license and every type rating, for testing. Rank still comes from hours and flights. With no id, yourself |
 
 Passengers can also board with the "Board" option on the aircraft (ox_target).
+
+## Pilot qualifications
+
+Before a flight starts, an aircraft spawns or a charter is booked, the server checks three things in order:
+
+1. **Pilot license.** Earned by passing the flight school checkride.
+2. **Pilot rank.** From flight hours and completed flights (`Config.PilotRanks`); each aircraft has a `minRank`.
+3. **Type rating** for that aircraft. Trainers at or below `Config.Qualifications.licenseCoversRank` (rank 1 by default) need only the license. Every other aircraft is rated on the **Type Ratings** page of the airline screen: once the pilot's rank is high enough, a "Get rated" button buys the course. The price depends on the aircraft's rank (`Config.Qualifications.typeRatingFee`).
+
+Pilots who flew before qualifications existed keep what they have flown: the first time their record is read they get the license (if they completed any flight) and a type rating for every aircraft they completed a flight in.
+
+Set `requireLicense` or `requireTypeRating` to `false` in `Config.Qualifications` to switch either check off.
 
 ## Configuration
 
@@ -132,6 +145,7 @@ Edit `shared/config.lua` for:
 - Aircraft models and capacities (17 planes + 5 helicopters)
 - Charter pricing
 - Flight school settings
+- Pilot qualifications: license and type rating checks, type rating prices
 - Cargo contract parameters
 - Helicopter operation settings
 - Fuel burn rates

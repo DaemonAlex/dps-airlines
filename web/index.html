@@ -8,5 +8,8 @@
   <body>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
+    <!-- DPS bubble look (public/dps-look.css). Kept in the source so every build ships it, and at the
+         end of the body so it loads after the app CSS that Vite puts in the head. -->
+    <link rel="stylesheet" href="./dps-look.css" />
   </body>
 </html>

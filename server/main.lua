@@ -187,16 +187,34 @@ lib.callback.register('dps-airlines:server:getTypeRatings', function(source)
     local player = Bridge.GetPlayer(source)
     if not player then return nil end
 
-    local stats = MySQL.single.await('SELECT type_ratings FROM airline_pilot_stats WHERE citizenid = ?', { player.identifier })
-    local ratings = (stats and stats.type_ratings and json.decode(stats.type_ratings)) or {}
+    local licenses, ratings = Qualifications.Get(player.identifier)
+    local rank = GetPilotRankShared(player.identifier)
+    local q = Config.Qualifications
 
     -- Feed the live fleet to the NUI so the Type Ratings tab can't drift from
     -- Config.Aircraft (was a hardcoded 21-plane list of the old vanilla fleet).
+    -- `covered` planes need only the license; `fee` is the type rating course price.
     local fleet = {}
     for _, ac in ipairs(Config.Aircraft) do
-        fleet[#fleet + 1] = { model = ac.model, label = ac.label, class = ac.class, minRank = ac.minRank or 1 }
+        local minRank = ac.minRank or 1
+        fleet[#fleet + 1] = {
+            model = ac.model, label = ac.label, class = ac.class, minRank = minRank,
+            covered = minRank <= (q.licenseCoversRank or 1),
+            fee = q.typeRatingFee[minRank] or 0,
+        }
     end
-    return { ratings = ratings, fleet = fleet }
+
+    -- String keys, so json.encode writes an object ({"3": "Captain"}), not a 0-based array.
+    local ranks = {}
+    for _, r in ipairs(Config.PilotRanks) do ranks[tostring(r.rank)] = r.name end
+
+    return {
+        ratings = ratings,
+        fleet = fleet,
+        hasLicense = licenses.ppl ~= nil,
+        rank = rank.rank,
+        rankNames = ranks,
+    }
 end)
 
 -- Get incidents

@@ -58,6 +58,7 @@ RegisterNUICallback('fetchData', function(data, cb)
         getPilotStats = 'dps-airlines:server:getPilotStats',
         getFlightLog = 'dps-airlines:server:getFlightLog',
         getTypeRatings = 'dps-airlines:server:getTypeRatings',
+        buyTypeRating = 'dps-airlines:server:buyTypeRating',
         getIncidents = 'dps-airlines:server:getIncidents',
         getCompanyStats = 'dps-airlines:server:getCompanyStats',
         getFlightTracker = 'dps-airlines:server:getFlightTracker',
