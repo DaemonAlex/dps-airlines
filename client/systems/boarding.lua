@@ -66,21 +66,30 @@ CreateThread(function()
     })
 end)
 
--- /boardplane fallback: board the nearest plane within 12m
-RegisterCommand('board', function()
-    local ped = PlayerPedId()
-    local pc = GetEntityCoords(ped)
-    local veh = GetClosestVehicle(pc.x, pc.y, pc.z, 12.0, 0, 71)
-    if veh == 0 then Bridge.Notify('Nothing to board nearby.', 'error'); return end
-    BoardAircraft(veh)
-end, false)
+-- Transit commands follow /board<vehicle> and /exit<vehicle> (/boardtrain lives in
+-- dps-traintools). Plain /board is retired so no two resources fight over it.
 
+-- /boardplane fallback: board the nearest plane within 12m
 RegisterCommand('boardplane', function()
     local ped = PlayerPedId()
     local pc = GetEntityCoords(ped)
     local veh = GetClosestVehicle(pc.x, pc.y, pc.z, 12.0, 0, 71)
     if veh == 0 then Bridge.Notify('No aircraft nearby.', 'error'); return end
     BoardAircraft(veh)
+end, false)
+
+-- /exitplane: leave the aircraft or bus you are riding in, once it has stopped.
+-- Cabin seats are reached by SetPedIntoVehicle, so this is the way back out.
+RegisterCommand('exitplane', function()
+    local ped = PlayerPedId()
+    local veh = GetVehiclePedIsIn(ped, false)
+    if veh == 0 or not IsBoardableTransport(veh) then
+        Bridge.Notify('You are not on an aircraft.', 'error'); return
+    end
+    if IsEntityInAir(veh) or GetEntitySpeed(veh) > 1.0 then
+        Bridge.Notify('Wait until the aircraft has stopped.', 'error'); return
+    end
+    TaskLeaveVehicle(ped, veh, 0)
 end, false)
 
 -- Attendant group-seat: pull nearby players into free cabin seats of the
