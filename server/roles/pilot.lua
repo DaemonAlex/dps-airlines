@@ -39,12 +39,9 @@ lib.callback.register('dps-airlines:server:startFlight', function(source, data)
     local player = Bridge.GetPlayer(source)
     if not player then return nil end
 
-    -- Rank gate: bigger aircraft need higher pilot rank
-    local pilotRank = GetPilotRank(player.identifier)
-    if (aircraft.minRank or 1) > pilotRank.rank then
-        local need = Config.PilotRanks[aircraft.minRank or 1]
-        return nil, ('Requires %s — you are %s'):format(need and need.name or 'a higher rank', pilotRank.name)
-    end
+    -- Qualification gate: license, rank, then type rating (server/systems/qualifications.lua)
+    local qualified, qualifyReason = Qualifications.CanFlyAircraft(player.identifier, aircraft)
+    if not qualified then return nil, qualifyReason end
 
     -- Check maintenance status
     local maint = MySQL.single.await(
@@ -364,11 +361,8 @@ lib.callback.register('dps-airlines:server:spawnAircraft', function(source, mode
 
     local sp = Bridge.GetPlayer(source)
     if not sp then return nil end
-    local spRank = GetPilotRank(sp.identifier)
-    if (aircraft.minRank or 1) > spRank.rank then
-        local need = Config.PilotRanks[aircraft.minRank or 1]
-        return nil, ('Requires %s — you are %s'):format(need and need.name or 'a higher rank', spRank.name)
-    end
+    local qualified, qualifyReason = Qualifications.CanFlyAircraft(sp.identifier, aircraft)
+    if not qualified then return nil, qualifyReason end
 
     local airport = Locations.GetAirport(airportCode)
     if not airport then return nil, 'Invalid airport' end

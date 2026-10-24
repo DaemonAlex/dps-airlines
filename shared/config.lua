@@ -95,6 +95,19 @@ Config.FlightSchool = {
     requiredFlightHours = 10,
 }
 
+-- Pilot qualifications, checked server-side before a flight starts, an aircraft spawns
+-- or a charter is booked: the pilot license (passed checkride), the pilot rank
+-- (Config.PilotRanks), then a type rating for the aircraft itself.
+Config.Qualifications = {
+    requireLicense = true,
+    requireTypeRating = true,
+    -- Aircraft at or below this minRank are covered by the license alone (the trainers),
+    -- so a new pilot can fly straight after the checkride.
+    licenseCoversRank = 1,
+    -- Type rating course price, by the aircraft's minRank. Bought on the Type Ratings screen.
+    typeRatingFee = { [1] = 0, [2] = 2500, [3] = 5000, [4] = 10000, [5] = 15000, [6] = 25000 },
+}
+
 -- Cargo contracts
 Config.CargoContracts = {
     minDeliveries = 3,
