@@ -2,6 +2,42 @@
 
 A comprehensive airlines job system for FiveM servers with **multi-framework support** (QBCore, Qbox, ESX), 5 realistic airline roles, React NUI, and server-side security hardening.
 
+## Status
+
+Not running on DelPerroSands. MS_FlightSim took over the pilot career on 25 October 2026. The
+dps-airlines folder was still on the server on 1 November 2026 and is not there now. MS_FlightSim
+and the aircraft packs were removed on 8 November 2026, so the server has no airline script at
+present. The code here is complete (version 3.1.0).
+
+## What it is for
+
+It turns the airport into a workplace. Players take the `airline` job and work as ground crew,
+flight attendant, dispatcher, first officer, captain or chief pilot. They fly passengers and
+cargo between five airports, run helicopter jobs, train new pilots and manage the company from
+one screen.
+
+## On its own, and with other scripts
+
+**On its own.** It needs `ox_lib`, `ox_target`, `oxmysql` and a framework (Qbox, QBCore or ESX).
+A player clocks on at the airport desk, picks a flight, boards NPC passengers or loads cargo,
+flies the route and gets paid on landing. The server works out every payout itself. Pilots earn
+hours and ranks, and higher ranks unlock bigger aircraft. `/airlinemenu` opens the stats screen.
+`/board` and `/boardplane` seat a player in a nearby aircraft. Fuel burn is the script's own
+figure. It does not read or set a fuel script.
+
+**With [dps-aviation](https://github.com/DaemonAlex/dps-aviation).** When the co-pilot finishes
+the preflight checklist, the captain's aircraft begins its timed engine start. Without
+dps-aviation the captain starts the engines by hand.
+
+**With a society bank.** Company money goes through the `qb-management` exports (`GetAccount`,
+`AddMoney`, `RemoveMoney`). On DelPerroSands wasabi_banking answers under that name. If no script
+provides those exports the calls fail quietly and the company account stays empty.
+
+**What is out of date for DelPerroSands.** The aircraft list in `shared/config.lua` names models
+from packs the server no longer has. The `airline` job grades in the server's `qbx_core` jobs
+file were changed on 25 October 2026 to fit MS_FlightSim, so they no longer match the six grades
+this script expects.
+
 ![plane-pack-120-planes-728486](https://github.com/user-attachments/assets/fa89d591-6a1d-4d3c-a03b-85fd3a35b58d)
 ## Features
 
@@ -177,3 +213,47 @@ dps-airlines/
 ## License
 
 Original concept and code by @daemonalex. Free to use and modify for your server.
+
+## Recent changes
+
+- **12 November 2026.** README: status, what it is for, how it works alone and with paid scripts, other DPS scripts.
+- **10 October 2026.** Airlines screen: DelPerroSands logo, title "Airlines", house colours.
+- **4 October 2026.** The co-pilot's preflight checklist hands the captain the engine start. Desk
+  positions moved.
+- **24 September 2026.** Co-pilot preflight checklist added, linked to dps-aviation.
+- **28 August 2026.** Synced with the live server.
+- **18 August 2026.** Audit fixes: a commission that could be claimed again and again, co-pilot
+  pay theft, and double pay.
+
+## Author
+
+Made by [DaemonAlex](https://github.com/DaemonAlex) for DelPerroSands.
+
+## Other DPS scripts
+
+All of these are made for DelPerroSands and run together on one Qbox server. Each one works on
+its own. The ones marked "pairs with" do more when both are running.
+
+| Script | What it does |
+|---|---|
+| [dps-inventory](https://github.com/DaemonAlex/dps-inventory) | The inventory: ox_inventory with equipment slots, backpacks, armour plates and a self status panel, in the DelPerroSands colours. |
+| [dps-medical](https://github.com/DaemonAlex/dps-medical) | Patient records, illness and diagnostic tests. A companion to wasabi_ambulance. Pairs with dps-inventory: symptoms and diagnoses show on the status panel. |
+| [dps-insurance](https://github.com/DaemonAlex/dps-insurance) | Ties m-Insurance into the MDT, impound, hospital and medical chart. Pairs with dps-medical. |
+| [dps-studio](https://github.com/DaemonAlex/dps-studio) | Build rooms, doors and portals in game from one panel (`/studio`), with owners and managers so staff do not have to support them. |
+| [dps-shops](https://github.com/DaemonAlex/dps-shops) | Shop clerks who greet and react to a robbery, then player-owned shops. |
+| [dps-fleet](https://github.com/DaemonAlex/dps-fleet) | Vehicle browser and workshop on one panel: extras, liveries and mods for emergency vehicles. |
+| [dps-parking](https://github.com/DaemonAlex/dps-parking) | Parking with valet, impound, violations and reserved spots. |
+| [dps-vehiclepersistence](https://github.com/DaemonAlex/dps-vehiclepersistence) | Vehicles stay where they were parked. Pairs with dps-parking. |
+| [dps-towjob](https://github.com/DaemonAlex/dps-towjob) | Queue-based tow job with jg-mechanic integration. |
+| [dps-services](https://github.com/DaemonAlex/dps-services) | Request a tow and follow it live on the lb-phone and lb-tablet. Pairs with dps-towjob. |
+| [dps-autoshops](https://github.com/DaemonAlex/dps-autoshops) | Self-service repair shops when no mechanic is on duty. |
+| [dps-cityworker](https://github.com/DaemonAlex/dps-cityworker) | City infrastructure job and career. |
+| [dps-ainpcs](https://github.com/DaemonAlex/dps-ainpcs) | NPCs you can talk to, with trust, quests and intel. |
+| [dps-badpeds](https://github.com/DaemonAlex/dps-badpeds) | Police interaction with NPCs: stops, arrests, intel and jail records. |
+| [dps-gangwars](https://github.com/DaemonAlex/dps-gangwars) | Ambient gang NPCs, territory population and war reinforcements. |
+| [dps-rotations](https://github.com/DaemonAlex/dps-rotations) | Moves dealers, harvests and other spots on a fixed schedule. |
+| [dps-trains](https://github.com/DaemonAlex/dps-trains) | The train system. Pairs with dps-trains-stock, dps-traintools and dps-transitapp. |
+| [dps-transitapp](https://github.com/DaemonAlex/dps-transitapp) | Live train arrival boards on the lb-phone. |
+| [dps-faceplant](https://github.com/DaemonAlex/dps-faceplant) | City help, reports and staff tools on the lb-phone and lb-tablet. |
+| [dps-chat](https://github.com/DaemonAlex/dps-chat) | A command box for voice-only servers. No chat feed. |
+| [dps-filmmode](https://github.com/DaemonAlex/dps-filmmode) | One key hides every HUD layer and gives a smooth free camera for recording. |
